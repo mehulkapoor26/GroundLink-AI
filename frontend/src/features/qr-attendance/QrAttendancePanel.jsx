@@ -244,6 +244,64 @@ export default function QrAttendancePanel({ group }) {
     }
   }
 
+  function downloadFile(filename, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleSaveBothToLaptop() {
+    if (!session) return;
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      session,
+      attendees,
+    };
+
+    downloadFile(
+      `attendance-${session.sessionCode}.json`,
+      JSON.stringify(payload, null, 2),
+      "application/json"
+    );
+
+    const escapeCsv = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["Session Title", "Session Code", "Status", "Member Name", "Checked In At"],
+      ...(attendees.length > 0
+        ? attendees.map((item) => [
+            session.title,
+            session.sessionCode,
+            session.isActive === false ? "Closed" : "Active",
+            item.memberName,
+            item.checkedInAt,
+          ])
+        : [[
+            session.title,
+            session.sessionCode,
+            session.isActive === false ? "Closed" : "Active",
+            "",
+            "",
+          ]]),
+    ];
+    const csvContent = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+
+    downloadFile(
+      `attendance-${session.sessionCode}.csv`,
+      csvContent,
+      "text/csv;charset=utf-8;"
+    );
+
+    setStatus({
+      type: "success",
+      text: `Saved attendance-${session.sessionCode}.csv & .json to Downloads.`,
+    });
+  }
+
   const inputStyle = {
     padding: "10px 12px",
     borderRadius: 8,
@@ -282,9 +340,24 @@ export default function QrAttendancePanel({ group }) {
         color: "#f4f6f0",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
         <div>
-          <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "#b7f337", fontWeight: 600 }}>
+          <div
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              color: "#b7f337",
+              fontWeight: 600,
+            }}
+          >
             SESSION & QR CHECK-IN
           </div>
           <h3 style={{ margin: "4px 0 0", fontSize: 20 }}>QR Attendance</h3>
@@ -352,10 +425,22 @@ export default function QrAttendancePanel({ group }) {
             marginBottom: 24,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
             <h4 style={{ margin: 0, fontSize: 17 }}>
               {session.title}{" "}
-              <span style={{ color: session.isActive === false ? "#fca5a5" : "#b7f337", fontSize: 13 }}>
+              <span
+                style={{
+                  color: session.isActive === false ? "#fca5a5" : "#b7f337",
+                  fontSize: 13,
+                }}
+              >
                 ({session.isActive === false ? "Closed" : "Active"})
               </span>
             </h4>
@@ -387,7 +472,12 @@ export default function QrAttendancePanel({ group }) {
           )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-            <button type="button" onClick={handleRefreshAttendees} disabled={loading} style={secondaryBtnStyle}>
+            <button
+              type="button"
+              onClick={handleRefreshAttendees}
+              disabled={loading}
+              style={secondaryBtnStyle}
+            >
               Refresh ({attendees.length})
             </button>
             <button
@@ -398,12 +488,24 @@ export default function QrAttendancePanel({ group }) {
             >
               Close Session
             </button>
+            <button
+              type="button"
+              onClick={handleSaveBothToLaptop}
+              disabled={!session}
+              style={secondaryBtnStyle}
+            >
+              Save CSV + JSON
+            </button>
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#b9c2b0" }}>Checked-in Members</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#b9c2b0" }}>
+              Checked-in Members
+            </div>
             {attendees.length === 0 ? (
-              <p style={{ margin: "6px 0 0", color: "#8d9685", fontSize: 14 }}>No check-ins yet.</p>
+              <p style={{ margin: "6px 0 0", color: "#8d9685", fontSize: 14 }}>
+                No check-ins yet.
+              </p>
             ) : (
               <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
                 {attendees.map((item) => (
@@ -436,7 +538,7 @@ export default function QrAttendancePanel({ group }) {
             type="text"
             value={memberName}
             onChange={(e) => setMemberName(e.target.value)}
-            placeholder="Member Name (e.g. Prachi, Rasam, Ronak)"
+            placeholder="Member Name"
             style={{ ...inputStyle, flex: 1, minWidth: 220 }}
           />
           <button type="submit" disabled={loading} style={primaryBtnStyle}>
