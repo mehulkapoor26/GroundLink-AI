@@ -4,7 +4,7 @@ export const features = [
   { id: 'qr-attendance', label: 'QR Attendance', icon: '◉', description: 'Scan and record attendance', state: 'planned' },
   { id: 'voice-messages', label: 'Voice Notes', icon: '◖', description: 'Share audio with your group', state: 'planned' },
   { id: 'offline-directions', label: 'Venue Navigation', icon: '⌖', description: 'Navigate saved venue maps', state: 'planned' },
-  { id: 'emergency-sos', label: 'Emergency SOS', icon: '!', description: 'Coordinate urgent response', state: 'planned' },
+  { id: 'emergency-sos', label: 'Emergency SOS', icon: '!', description: 'Coordinate urgent response', state: 'active' },
   { id: 'group-management', label: 'Group Management', icon: '◎', description: 'Manage your local teams', state: 'active' },
   { id: 'admin-dashboard', label: 'Admin Dashboard', icon: '▤', description: 'Operations and oversight', state: 'planned' }
 ];
