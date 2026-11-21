@@ -11,6 +11,10 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
+import 'package:groundlink_app_client/src/protocol/attendance_record.dart'
+    as _icyhxoxw;
+import 'package:groundlink_app_client/src/protocol/attendance_session.dart'
+    as _i9khk56l;
 import 'package:groundlink_app_client/src/protocol/greetings/greeting.dart'
     as _i7a884yf;
 import 'package:http/http.dart' as _i85jenna;
@@ -347,6 +351,52 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// {@category Endpoint}
+class EndpointAttendance extends _isc.EndpointRef {
+  EndpointAttendance(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'attendance';
+
+  _ida.Future<_i9khk56l.AttendanceSession> createSession(
+    int groupId,
+    String title,
+  ) => caller.callServerEndpoint<_i9khk56l.AttendanceSession>(
+    'attendance',
+    'createSession',
+    {
+      'groupId': groupId,
+      'title': title,
+    },
+  );
+
+  _ida.Future<_icyhxoxw.AttendanceRecord> checkIn(
+    String sessionCode,
+    String memberName,
+  ) => caller.callServerEndpoint<_icyhxoxw.AttendanceRecord>(
+    'attendance',
+    'checkIn',
+    {
+      'sessionCode': sessionCode,
+      'memberName': memberName,
+    },
+  );
+
+  _ida.Future<List<_icyhxoxw.AttendanceRecord>> getAttendees(int sessionId) =>
+      caller.callServerEndpoint<List<_icyhxoxw.AttendanceRecord>>(
+        'attendance',
+        'getAttendees',
+        {'sessionId': sessionId},
+      );
+
+  _ida.Future<_i9khk56l.AttendanceSession> closeSession(int sessionId) =>
+      caller.callServerEndpoint<_i9khk56l.AttendanceSession>(
+        'attendance',
+        'closeSession',
+        {'sessionId': sessionId},
+      );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -405,6 +455,7 @@ class Client extends _isc.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    attendance = EndpointAttendance(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -412,6 +463,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointAttendance attendance;
 
   late final EndpointGreeting greeting;
 
@@ -421,6 +474,7 @@ class Client extends _isc.ServerpodClientShared {
   Map<String, _isc.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'attendance': attendance,
     'greeting': greeting,
   };
 
