@@ -1,5 +1,6 @@
 import { createId } from '../utils/ids.js';
 import { getStore, updateStore } from '../services/storage.js';
+import { createSosAlert, updateSosAlert } from '../services/emergency-sos.js';
 
 const presence = new Map();
 const room = code => `group:${code}`;
@@ -35,6 +36,30 @@ export function configureSockets(io) {
         acknowledge({ ok: true, message });
       } catch { acknowledge({ ok: false, error: 'Message could not be saved' }); }
     });
+    socket.on('sos:create', async (payload = {}, acknowledge = () => {}) => {
+      const groupCode = socket.data.groupCode;
+      const member = presence.get(groupCode)?.get(socket.id);
+      if (!groupCode || !member) return acknowledge({ ok: false, error: 'Join a group before sending an SOS' });
+      try {
+        const result = await createSosAlert({ ...payload, groupCode, reporter: member.name });
+        if (result.error) return acknowledge({ ok: false, error: result.error });
+        io.to(room(groupCode)).emit('sos:created', result.alert);
+        acknowledge({ ok: true, alert: result.alert });
+      } catch { acknowledge({ ok: false, error: 'SOS alert could not be saved' }); }
+    });
+    for (const action of ['acknowledge', 'resolve']) {
+      socket.on(`sos:${action}`, async ({ alertId } = {}, acknowledge = () => {}) => {
+        const groupCode = socket.data.groupCode;
+        const member = presence.get(groupCode)?.get(socket.id);
+        if (!groupCode || !member) return acknowledge({ ok: false, error: 'Join a group before updating an SOS' });
+        try {
+          const result = await updateSosAlert({ groupCode, alertId, action, actor: member.name });
+          if (result.error) return acknowledge({ ok: false, error: result.error });
+          io.to(room(groupCode)).emit('sos:updated', result.alert);
+          acknowledge({ ok: true, alert: result.alert });
+        } catch { acknowledge({ ok: false, error: 'SOS alert could not be updated' }); }
+      });
+    }
     socket.on('disconnect', () => {
       const code = socket.data.groupCode;
       if (code && presence.has(code)) {

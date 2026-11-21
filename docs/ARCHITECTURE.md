@@ -13,8 +13,8 @@ The host machine serves as the local coordinator. In development, Vite binds to 
 ## Backend modules
 
 - `config/`: host and port configuration.
-- `routes/`: HTTP health, groups, and message history endpoints.
-- `sockets/`: group joins, presence, and message broadcasts.
+- `routes/`: HTTP health, groups, message history, and group SOS endpoints.
+- `sockets/`: group joins, presence, message broadcasts, and group SOS updates.
 - `services/storage.js`: serialized JSON read/write operations to avoid concurrent write races in the initial single-host store.
 - `utils/`: ID helpers.
 
@@ -33,6 +33,7 @@ The in-memory presence map is transient. Groups and messages are written to the 
 
 - Client emits `group:join` with `{ code, name }`; server acknowledges `{ ok, group, member }` and broadcasts `members:update`.
 - Client emits `message:send` with `{ text, clientId }`; server validates, persists, then broadcasts `message:new` and acknowledges success.
+- SOS clients fetch group history from `/api/emergency-sos/:code`. They emit `sos:create`, `sos:acknowledge`, or `sos:resolve`; the server persists each update before broadcasting `sos:created` or `sos:updated` to the group room.
 - Socket disconnect removes the member from the transient presence list.
 
 ## Offline boundary

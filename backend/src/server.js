@@ -10,6 +10,7 @@ import { configureSockets } from './sockets/index.js';
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+app.set('io', io);
 app.use(express.json({ limit: '32kb' }));
 app.use('/api', api);
 app.use((error, _req, res, _next) => { console.error(error); res.status(500).json({ error: 'Internal server error' }); });

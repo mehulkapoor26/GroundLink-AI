@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 const file = resolve('backend/src/data/store.json');
-const initial = { groups: [], messages: [] };
+const initial = { groups: [], messages: [], sosAlerts: [] };
 let queue = Promise.resolve();
 
 async function read() {
