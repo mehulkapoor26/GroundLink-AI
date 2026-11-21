@@ -1,0 +1,1 @@
+export default function Modal({ title, children, onClose }) { return <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><section className="modal"><button className="modal-close" onClick={onClose}>×</button><div className="eyebrow">GROUNDLINK / GROUPS</div><h2>{title}</h2>{children}</section></div>; }
