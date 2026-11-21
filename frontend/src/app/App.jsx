@@ -13,7 +13,7 @@ const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
 export default function App() {
   const initialCode = new URLSearchParams(window.location.search).get('join');
-  const [active, setActive] = useState('admin'); const [group, setGroup] = useState(null); const [membersOnline, setMembersOnline] = useState(0); const [health, setHealth] = useState(false); const [mobileNav, setMobileNav] = useState(false);
+  
   const [active, setActive] = useState('messaging');
   const [group, setGroup] = useState(null);
   const [membersOnline, setMembersOnline] = useState(0);
