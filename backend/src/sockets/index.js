@@ -6,12 +6,14 @@ const room = code => `group:${code}`;
 
 export function configureSockets(io) {
   io.on('connection', socket => {
-    socket.on('group:join', async ({ code, name } = {}, acknowledge = () => {}) => {
+    socket.on('group:join', async ({ code, name } = {}, acknowledge = () => { }) => {
       try {
         const normalized = String(code || '').toUpperCase();
         const group = (await getStore()).groups.find(item => item.code === normalized);
         if (!group) return acknowledge({ ok: false, error: 'Group not found' });
-        const member = { id: socket.id, name: String(name || 'Guest').trim().slice(0, 32) || 'Guest', joinedAt: new Date().toISOString() };
+        const memberName = String(name || 'Guest').trim().slice(0, 32) || 'Guest';
+        const member = { id: socket.id, name: memberName, joinedAt: new Date().toISOString() };
+        socket.data.memberName = memberName;
         for (const [previous, sockets] of presence) {
           if (sockets.has(socket.id)) { sockets.delete(socket.id); io.to(room(previous)).emit('members:update', [...sockets.values()]); }
         }
@@ -23,7 +25,7 @@ export function configureSockets(io) {
         acknowledge({ ok: true, group, member });
       } catch { acknowledge({ ok: false, error: 'Unable to join right now' }); }
     });
-    socket.on('message:send', async ({ text, clientId } = {}, acknowledge = () => {}) => {
+    socket.on('message:send', async ({ text, clientId } = {}, acknowledge = () => { }) => {
       const groupCode = socket.data.groupCode;
       const body = String(text || '').trim().slice(0, 2000);
       const member = presence.get(groupCode)?.get(socket.id);

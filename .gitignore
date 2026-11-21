@@ -6,3 +6,5 @@ backend/src/data/*.json
 .DS_Store
 *.log
 coverage/
+
+backend/src/data/voice/*.webm
