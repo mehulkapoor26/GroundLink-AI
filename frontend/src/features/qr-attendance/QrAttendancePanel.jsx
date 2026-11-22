@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8082";
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.hostname}:8082`;
 const STORAGE_KEY = "groundlink-qr-attendance-state";
 
 function loadSavedState() {
@@ -16,16 +18,20 @@ function loadSavedState() {
 
 export default function QrAttendancePanel({ group }) {
   const saved = loadSavedState();
+  const params = new URLSearchParams(window.location.search);
+  const urlAttendanceCode = (params.get("attendance") || "").trim().toUpperCase();
+  const urlGroupId = (params.get("groupId") || "").trim();
 
   const [groupId, setGroupId] = useState(() =>
-    group?.id ? String(group.id) : saved?.groupId || "1"
+    group?.id ? String(group.id) : urlGroupId || saved?.groupId || "1"
   );
   const [title, setTitle] = useState(() => saved?.title || "Hackathon Sync");
   const [session, setSession] = useState(() => saved?.session || null);
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrTargetUrl, setQrTargetUrl] = useState("");
 
   const [sessionCode, setSessionCode] = useState(
-    () => saved?.sessionCode || saved?.session?.sessionCode || ""
+    () => urlAttendanceCode || saved?.sessionCode || saved?.session?.sessionCode || ""
   );
   const [memberName, setMemberName] = useState("");
   const [attendees, setAttendees] = useState(() => saved?.attendees || []);
@@ -38,6 +44,19 @@ export default function QrAttendancePanel({ group }) {
       setGroupId(String(group.id));
     }
   }, [group?.id]);
+
+  useEffect(() => {
+    if (urlAttendanceCode) {
+      setSessionCode(urlAttendanceCode);
+      if (urlGroupId) setGroupId(urlGroupId);
+      try {
+        const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
+        window.history.replaceState({}, "", cleanUrl);
+      } catch {
+        // Ignore history restrictions
+      }
+    }
+  }, [urlAttendanceCode, urlGroupId]);
 
   useEffect(() => {
     try {
@@ -59,9 +78,15 @@ export default function QrAttendancePanel({ group }) {
   useEffect(() => {
     if (!session?.sessionCode) {
       setQrDataUrl("");
+      setQrTargetUrl("");
       return;
     }
-    QRCode.toDataURL(session.sessionCode, {
+    const targetUrl = `${window.location.origin}/?attendance=${encodeURIComponent(
+      session.sessionCode
+    )}&groupId=${encodeURIComponent(groupId || "1")}`;
+    setQrTargetUrl(targetUrl);
+
+    QRCode.toDataURL(targetUrl, {
       width: 184,
       margin: 2,
       color: {
@@ -71,7 +96,7 @@ export default function QrAttendancePanel({ group }) {
     })
       .then((url) => setQrDataUrl(url))
       .catch(() => setQrDataUrl(""));
-  }, [session?.sessionCode]);
+  }, [session?.sessionCode, groupId]);
 
   async function handleCreateSession(e) {
     e.preventDefault();
@@ -236,6 +261,7 @@ export default function QrAttendancePanel({ group }) {
     setSessionCode("");
     setAttendees([]);
     setQrDataUrl("");
+    setQrTargetUrl("");
     setStatus(null);
     try {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -468,6 +494,11 @@ export default function QrAttendancePanel({ group }) {
                 height={176}
                 style={{ borderRadius: 10, display: "block" }}
               />
+              {qrTargetUrl && (
+                <div style={{ marginTop: 6, fontSize: 12, color: "#9aa392", wordBreak: "break-all" }}>
+                  Scan link: {qrTargetUrl}
+                </div>
+              )}
             </div>
           )}
 

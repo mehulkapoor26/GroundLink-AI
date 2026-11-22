@@ -9,17 +9,34 @@ import SpeakingIndicator from '../voice-messages/SpeakingIndicator.jsx';
 import RadioMode from '../voice-messages/RadioMode.jsx';
 
 const initials = name => name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+const NAME_STORAGE_KEY = 'groundlink-display-name';
+
+function loadSavedName() {
+  try {
+    return (
+      window.localStorage.getItem(NAME_STORAGE_KEY) ||
+      window.sessionStorage.getItem('groundlink-name') ||
+      ''
+    ).trim();
+  } catch {
+    return '';
+  }
+}
 
 export default function MessagePanel({ group, onMembers }) {
   const [messages, setMessages] = useState([]);
   const [members, setMembers] = useState([]);
   const [text, setText] = useState('');
+  const [displayName, setDisplayName] = useState(() => loadSavedName() || `Guest ${Math.floor(10 + Math.random() * 89)}`);
+  const [nameInput, setNameInput] = useState(() => loadSavedName());
+  const [nameSavedNotice, setNameSavedNotice] = useState(false);
   const [connection, setConnection] = useState(socket.connected);
   const [error, setError] = useState('');
   const [speakers, setSpeakers] = useState([]);
   const [gnaniAvailable, setGnaniAvailable] = useState(false);
   const bottom = useRef(null);
-  const name = useRef(sessionStorage.getItem('groundlink-name') || `Guest ${Math.floor(10 + Math.random() * 89)}`);
+  const activeNameRef = useRef(displayName);
+  activeNameRef.current = displayName;
 
   // Check Gnani availability once
   useEffect(() => {
@@ -27,6 +44,37 @@ export default function MessagePanel({ group, onMembers }) {
       .then(d => setGnaniAvailable(!!d.configured))
       .catch(() => setGnaniAvailable(false));
   }, []);
+
+  const syncNameWithSocket = useCallback((nextName, persist = true) => {
+    const cleaned = String(nextName || '').trim().slice(0, 32);
+    if (!cleaned) return;
+    setDisplayName(cleaned);
+    activeNameRef.current = cleaned;
+    if (persist) {
+      try {
+        window.localStorage.setItem(NAME_STORAGE_KEY, cleaned);
+        window.sessionStorage.setItem('groundlink-name', cleaned);
+      } catch { /* Storage may be unavailable */ }
+    }
+    if (socket.connected && group?.code) {
+      socket.emit('group:join', { code: group.code, name: cleaned }, result => {
+        if (result?.ok) {
+          setError('');
+        } else if (result?.error) {
+          setError(result.error);
+        }
+      });
+    }
+  }, [group?.code]);
+
+  function handleNameSave(e) {
+    e.preventDefault();
+    const cleaned = nameInput.trim().slice(0, 32);
+    if (!cleaned) return;
+    syncNameWithSocket(cleaned, true);
+    setNameSavedNotice(true);
+    setTimeout(() => setNameSavedNotice(false), 1500);
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -38,10 +86,17 @@ export default function MessagePanel({ group, onMembers }) {
         if (mounted) { setMessages(history); history.forEach(cacheMessage); }
       } catch { /* Cached messages remain available while disconnected. */ }
       socket.connect();
-      socket.emit('group:join', { code: group.code, name: name.current }, result => {
+      socket.emit('group:join', { code: group.code, name: activeNameRef.current }, result => {
         if (!mounted) return;
-        if (result?.ok) { setError(''); sessionStorage.setItem('groundlink-name', result.member.name); }
-        else setError(result?.error || 'Unable to join group');
+        if (result?.ok) {
+          setError('');
+          const confirmedName = result.member?.name || activeNameRef.current;
+          setDisplayName(confirmedName);
+          activeNameRef.current = confirmedName;
+          try { window.sessionStorage.setItem('groundlink-name', confirmedName); } catch { /* ignore */ }
+        } else {
+          setError(result?.error || 'Unable to join group');
+        }
       });
     }
     const onMessage = message => {
@@ -51,7 +106,10 @@ export default function MessagePanel({ group, onMembers }) {
       }
     };
     const onMemberUpdate = list => { setMembers(list); onMembers(list.length); };
-    const onConnect = () => setConnection(true);
+    const onConnect = () => {
+      setConnection(true);
+      socket.emit('group:join', { code: group.code, name: activeNameRef.current }, () => {});
+    };
     const onDisconnect = () => setConnection(false);
     const onSpeaking = ({ socketId, name: speakerName, speaking }) => {
       setSpeakers(prev => {
@@ -91,7 +149,7 @@ export default function MessagePanel({ group, onMembers }) {
     });
   }
 
-  const currentUser = name.current;
+  const currentUser = displayName;
 
   return (
     <section className="chat-panel">
@@ -104,6 +162,59 @@ export default function MessagePanel({ group, onMembers }) {
           <span /> {connection ? 'Connected' : 'Reconnecting'}
         </div>
       </div>
+
+     <form
+        onSubmit={handleNameSave}
+        style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          padding: '8px 12px',
+          margin: '0 0 10px 0',
+          borderRadius: '10px',
+          background: '#131915',
+          border: '1px solid #263229'
+        }}
+      >
+        <span style={{ fontSize: '12px', color: '#8fa395', whiteSpace: 'nowrap' }}>
+          DISPLAY NAME
+        </span>
+        <input
+          value={nameInput}
+          onChange={e => setNameInput(e.target.value)}
+          placeholder={`Current: ${displayName}`}
+          maxLength={32}
+          aria-label="Your display name"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            padding: '7px 10px',
+            borderRadius: '8px',
+            border: '1px solid #2c3a30',
+            background: '#0c100d',
+            color: '#f2f7f3',
+            fontSize: '13px',
+            outline: 'none'
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!nameInput.trim() || nameInput.trim() === displayName}
+          style={{
+            padding: '7px 12px',
+            borderRadius: '8px',
+            border: '1px solid #88e636',
+            background: !nameInput.trim() || nameInput.trim() === displayName ? '#1b241d' : '#88e636',
+            color: !nameInput.trim() || nameInput.trim() === displayName ? '#7b8b80' : '#0b110c',
+            fontWeight: 600,
+            fontSize: '12px',
+            cursor: !nameInput.trim() || nameInput.trim() === displayName ? 'default' : 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {nameSavedNotice ? 'Saved ✓' : 'Set name'}
+        </button>
+      </form>
 
       <div className="chat-body">
         <div className="chat-date">TODAY · LOCAL SESSION</div>
