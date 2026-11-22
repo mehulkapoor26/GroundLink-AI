@@ -15,12 +15,10 @@ router.use('/admin', adminRoutes);
 router.use('/emergency-sos', emergencySos);
 router.use('/voice', voice);
 router.use('/gnani', gnani);
-
 router.get('/groups/:code/messages', async (req, res, next) => {
   try {
     const store = await getStore();
     res.json(store.messages.filter(message => message.groupCode === req.params.code.toUpperCase()).slice(-100));
   } catch (e) { next(e); }
 });
-
 export default router;

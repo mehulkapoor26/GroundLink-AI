@@ -13,7 +13,6 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { maxHttpBufferSize: 2 * 1024 * 1024 });
 app.set('io', io);
-
 app.use(express.json({ limit: '32kb' }));
 app.use(identifyUser);
 app.use('/api', api);

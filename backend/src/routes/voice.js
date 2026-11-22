@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { mkdir, writeFile, stat } from 'node:fs/promises';
+import { mkdir, writeFile, stat, unlink } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { createId } from '../utils/ids.js';
 import { getStore, updateStore } from '../services/storage.js';
@@ -39,6 +39,21 @@ router.post('/upload', requireUser, async (req, res, next) => {
     const group = store.groups.find(g => g.code === groupCode);
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
+    // The browser retries queued offline notes. A stable client id makes
+    // retries idempotent if the server saved the first request but its
+    // response was lost.
+    const clientMessageId = String(
+      req.headers['x-groundlink-client-message-id'] || req.headers['x-groundlink-client-id'] || ''
+    ).slice(0, 100);
+    const existing = clientMessageId && store.messages.find(message =>
+      message.type === 'voice' && message.groupCode === groupCode &&
+      (message.clientMessageId || message.clientId) === clientMessageId
+    );
+    if (existing) {
+      req.resume();
+      return res.status(200).json(existing);
+    }
+
     // Collect body (raw binary)
     const chunks = [];
     let size = 0;
@@ -60,6 +75,8 @@ router.post('/upload', requireUser, async (req, res, next) => {
     // Build voice message record
     const message = {
       id: createId(10),
+      clientMessageId: clientMessageId || undefined,
+      clientId: clientMessageId || undefined,
       type: 'voice',
       groupCode,
       sender: req.glUser,
@@ -71,9 +88,21 @@ router.post('/upload', requireUser, async (req, res, next) => {
       transcription: null,
       createdAt: new Date().toISOString(),
     };
-    await updateStore(s => s.messages.push(message));
+    const savedMessage = await updateStore(current => {
+      const duplicate = clientMessageId && current.messages.find(item =>
+        item.type === 'voice' && item.groupCode === groupCode &&
+        (item.clientMessageId || item.clientId) === clientMessageId
+      );
+      if (duplicate) return duplicate;
+      current.messages.push(message);
+      return message;
+    });
+    if (savedMessage.id !== message.id) {
+      await unlink(resolve(VOICE_DIR, filename)).catch(() => {});
+      return res.status(200).json(savedMessage);
+    }
 
-    res.status(201).json(message);
+    res.status(201).json(savedMessage);
   } catch (e) { next(e); }
 });
 

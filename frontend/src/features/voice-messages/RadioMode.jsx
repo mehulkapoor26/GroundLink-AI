@@ -29,9 +29,14 @@ export default function RadioMode({ messages, currentUser }) {
     lastPlayedRef.current.add(msg.id);
 
     stopGlobalAudio();
-    const audio = new Audio(`/api/voice/${msg.audioId}`);
-    audio.addEventListener('ended', () => playNext());
-    audio.addEventListener('error', () => playNext());
+    const localUrl = msg.audioBlob ? URL.createObjectURL(msg.audioBlob) : null;
+    const audio = new Audio(localUrl || `/api/voice/${msg.audioId}`);
+    const finish = () => {
+      if (localUrl) URL.revokeObjectURL(localUrl);
+      playNext();
+    };
+    audio.addEventListener('ended', finish, { once: true });
+    audio.addEventListener('error', finish, { once: true });
     audio.play().catch(() => playNext());
   }, [enabled]);
 
