@@ -452,15 +452,14 @@ export default function App() {
                   ))}
                 </div>
                 {isEmergencySos && <EmergencySOSPanel group={null} />}
-            {(chosenFeature?.id === "offline-directions" || chosenFeature?.id === "nav" || chosenFeature?.id === "navigation" || chosenFeature?.id === "campus-nav") && (
-              <CampusVectorNav />
             )}
               </>
             )
           )}
 
           {/* ── Coming-soon placeholder ──────────────────────── */}
-          {!isKnownFeature && (
+          {chosenFeature?.id === "offline-directions" && <CampusVectorNav />}
+            {!isKnownFeature && chosenFeature?.id !== "offline-directions" && (
             <section className="placeholder">
               <div className="placeholder-icon">{chosenFeature.icon}</div>
               <div className="eyebrow">FEATURE MODULE / IN DEVELOPMENT</div>
