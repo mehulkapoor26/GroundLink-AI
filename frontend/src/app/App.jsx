@@ -27,6 +27,7 @@ import {
   getCachedMessages, getVoiceNote, mergeMessages, updateVoiceNote,
 } from '../services/localDb.js';
 import {
+import CampusVectorNav from "../components/CampusVectorNav";
   broadcastPendingVoiceNotes, resetInterruptedVoiceNotes, syncPendingVoiceNotes,
 } from '../services/voiceNotes.js';
 
@@ -451,6 +452,9 @@ export default function App() {
                   ))}
                 </div>
                 {isEmergencySos && <EmergencySOSPanel group={null} />}
+            {(chosenFeature?.id === "nav" || chosenFeature?.id === "navigation" || chosenFeature?.id === "campus-nav") && (
+              <CampusVectorNav />
+            )}
               </>
             )
           )}
