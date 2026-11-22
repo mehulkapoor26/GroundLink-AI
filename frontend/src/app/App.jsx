@@ -26,16 +26,16 @@ const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
 export default function App() {
   const initialCode = new URLSearchParams(window.location.search).get('join');
-  const [active, setActive]           = useState('messaging');
-  const [group, setGroup]             = useState(null);
-  const [messages, setMessages]       = useState([]);
-  const [members, setMembers]         = useState([]);
-  const [connection, setConnection]   = useState(socket.connected);
-  const [speakers, setSpeakers]       = useState([]);
+  const [active, setActive] = useState('messaging');
+  const [group, setGroup] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [connection, setConnection] = useState(socket.connected);
+  const [speakers, setSpeakers] = useState([]);
   const [membersOnline, setMembersOnline] = useState(0);
-  const [health, setHealth]           = useState(false);
-  const [mobileNav, setMobileNav]     = useState(false);
-  const [joinError, setJoinError]     = useState('');
+  const [health, setHealth] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
+  const [joinError, setJoinError] = useState('');
   const userName = useRef(
     sessionStorage.getItem('groundlink-name') ||
     `Guest ${Math.floor(10 + Math.random() * 89)}`
@@ -122,7 +122,7 @@ export default function App() {
       setMessages(current =>
         current.some(m => m.id === message.id) ? current : [...current, message]
       );
-      cacheMessage(message).catch(() => {});
+      cacheMessage(message).catch(() => { });
     };
 
     const onMemberUpdate = list => {
@@ -131,7 +131,7 @@ export default function App() {
       setMembersOnline(list.length);
     };
 
-    const onConnect    = () => { if (mounted) setConnection(true); };
+    const onConnect = () => { if (mounted) setConnection(true); };
     const onDisconnect = () => { if (mounted) setConnection(false); };
 
     const onSpeaking = ({ socketId, name: speakerName, speaking }) => {
@@ -144,10 +144,10 @@ export default function App() {
       });
     };
 
-    socket.on('message:new',    onMessage);
+    socket.on('message:new', onMessage);
     socket.on('members:update', onMemberUpdate);
-    socket.on('connect',        onConnect);
-    socket.on('disconnect',     onDisconnect);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on('voice:speaking', onSpeaking);
 
     // Re-join automatically after a reconnect so server state is restored.
@@ -166,11 +166,11 @@ export default function App() {
 
     return () => {
       mounted = false;
-      socket.off('message:new',    onMessage);
+      socket.off('message:new', onMessage);
       socket.off('members:update', onMemberUpdate);
-      socket.off('connect',        onConnect);
-      socket.off('connect',        onReconnect);
-      socket.off('disconnect',     onDisconnect);
+      socket.off('connect', onConnect);
+      socket.off('connect', onReconnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('voice:speaking', onSpeaking);
     };
   }, [group]);
@@ -181,7 +181,7 @@ export default function App() {
       setMessages(current =>
         current.some(m => m.id === message.id) ? current : [...current, message]
       );
-      cacheMessage(message).catch(() => {});
+      cacheMessage(message).catch(() => { });
     }
   }, [group]);
 
@@ -196,9 +196,9 @@ export default function App() {
     setMobileNav(false);
   }
 
-  const isMessaging    = active === 'messaging';
-  const isVoiceTab     = active === 'voice-messages';
-  const isQrJoining    = active === 'qr-joining';
+  const isMessaging = active === 'messaging';
+  const isVoiceTab = active === 'voice-messages';
+  const isQrJoining = active === 'qr-joining';
   const isEmergencySos = active === 'emergency-sos';
   const isKnownFeature = isMessaging || isVoiceTab || isQrJoining || isEmergencySos;
 
