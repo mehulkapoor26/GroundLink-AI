@@ -27,9 +27,9 @@ import {
   getCachedMessages, getVoiceNote, mergeMessages, updateVoiceNote,
 } from '../services/localDb.js';
 import {
-import CampusVectorNav from "../components/CampusVectorNav";
   broadcastPendingVoiceNotes, resetInterruptedVoiceNotes, syncPendingVoiceNotes,
 } from '../services/voiceNotes.js';
+import CampusVectorNav from "../components/CampusVectorNav";
 
 const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
