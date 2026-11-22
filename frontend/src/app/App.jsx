@@ -15,8 +15,6 @@ const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 export default function App() {
   const initialCode = new URLSearchParams(window.location.search).get('join');
 
-  const [active, setActive] = useState('messaging');
-  const [group, setGroup] = useState(null);
 const [active, setActive] = useState(() => {
   try {
     return window.localStorage.getItem('groundlink-active-tab') || 'messaging';
