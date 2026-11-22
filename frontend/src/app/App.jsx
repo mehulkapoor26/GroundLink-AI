@@ -7,7 +7,7 @@
  *
  * Both MessagePanel and VoicePanel receive messages/connection/speakers
  * as props and no longer manage their own socket subscription.
- * Emergency SOS panel is integrated alongside them.
+ * Emergency SOS, QR Attendance, and Admin Dashboard panels are integrated alongside them.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
@@ -17,6 +17,8 @@ import MessagePanel from '../features/messaging/MessagePanel.jsx';
 import InvitePanel from '../features/qr-joining/InvitePanel.jsx';
 import VoicePanel from '../features/voice-messages/VoicePanel.jsx';
 import EmergencySOSPanel from '../features/emergency-sos/EmergencySOSPanel.jsx';
+import AdminDashboard from '../features/admin-dashboard/AdminDashboard.jsx';
+import QrAttendancePanel from '../features/qr-attendance/QrAttendancePanel.jsx';
 import { features } from '../utils/features.js';
 import { api } from '../services/api.js';
 import { socket } from '../services/socket.js';
@@ -26,16 +28,23 @@ const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
 export default function App() {
   const initialCode = new URLSearchParams(window.location.search).get('join');
-  const [active, setActive] = useState('messaging');
-  const [group, setGroup] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [connection, setConnection] = useState(socket.connected);
-  const [speakers, setSpeakers] = useState([]);
+  const [active, setActive] = useState(() => {
+    if (initialCode) return 'messaging';
+    try {
+      return window.localStorage.getItem('groundlink-active-tab') || 'messaging';
+    } catch {
+      return 'messaging';
+    }
+  });
+  const [group, setGroup]             = useState(null);
+  const [messages, setMessages]       = useState([]);
+  const [members, setMembers]         = useState([]);
+  const [connection, setConnection]   = useState(socket.connected);
+  const [speakers, setSpeakers]       = useState([]);
   const [membersOnline, setMembersOnline] = useState(0);
-  const [health, setHealth] = useState(false);
-  const [mobileNav, setMobileNav] = useState(false);
-  const [joinError, setJoinError] = useState('');
+  const [health, setHealth]           = useState(false);
+  const [mobileNav, setMobileNav]     = useState(false);
+  const [joinError, setJoinError]     = useState('');
   const userName = useRef(
     sessionStorage.getItem('groundlink-name') ||
     `Guest ${Math.floor(10 + Math.random() * 89)}`
@@ -122,7 +131,7 @@ export default function App() {
       setMessages(current =>
         current.some(m => m.id === message.id) ? current : [...current, message]
       );
-      cacheMessage(message).catch(() => { });
+      cacheMessage(message).catch(() => {});
     };
 
     const onMemberUpdate = list => {
@@ -131,7 +140,7 @@ export default function App() {
       setMembersOnline(list.length);
     };
 
-    const onConnect = () => { if (mounted) setConnection(true); };
+    const onConnect    = () => { if (mounted) setConnection(true); };
     const onDisconnect = () => { if (mounted) setConnection(false); };
 
     const onSpeaking = ({ socketId, name: speakerName, speaking }) => {
@@ -144,10 +153,10 @@ export default function App() {
       });
     };
 
-    socket.on('message:new', onMessage);
+    socket.on('message:new',    onMessage);
     socket.on('members:update', onMemberUpdate);
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
+    socket.on('connect',        onConnect);
+    socket.on('disconnect',     onDisconnect);
     socket.on('voice:speaking', onSpeaking);
 
     // Re-join automatically after a reconnect so server state is restored.
@@ -166,11 +175,11 @@ export default function App() {
 
     return () => {
       mounted = false;
-      socket.off('message:new', onMessage);
+      socket.off('message:new',    onMessage);
       socket.off('members:update', onMemberUpdate);
-      socket.off('connect', onConnect);
-      socket.off('connect', onReconnect);
-      socket.off('disconnect', onDisconnect);
+      socket.off('connect',        onConnect);
+      socket.off('connect',        onReconnect);
+      socket.off('disconnect',     onDisconnect);
       socket.off('voice:speaking', onSpeaking);
     };
   }, [group]);
@@ -181,7 +190,7 @@ export default function App() {
       setMessages(current =>
         current.some(m => m.id === message.id) ? current : [...current, message]
       );
-      cacheMessage(message).catch(() => { });
+      cacheMessage(message).catch(() => {});
     }
   }, [group]);
 
@@ -194,13 +203,16 @@ export default function App() {
   function selectFeature(id) {
     setActive(id);
     setMobileNav(false);
+    try { window.localStorage.setItem('groundlink-active-tab', id); } catch {}
   }
 
-  const isMessaging = active === 'messaging';
-  const isVoiceTab = active === 'voice-messages';
-  const isQrJoining = active === 'qr-joining';
-  const isEmergencySos = active === 'emergency-sos';
-  const isKnownFeature = isMessaging || isVoiceTab || isQrJoining || isEmergencySos;
+  const isMessaging       = active === 'messaging';
+  const isVoiceTab        = active === 'voice-messages';
+  const isQrJoining       = active === 'qr-joining';
+  const isEmergencySos    = active === 'emergency-sos';
+  const isQrAttendance    = active === 'qr-attendance';
+  const isAdminDashboard  = active === 'admin-dashboard';
+  const isKnownFeature    = isMessaging || isVoiceTab || isQrJoining || isEmergencySos || isQrAttendance || isAdminDashboard;
 
   return (
     <div className="app-shell">
@@ -260,84 +272,109 @@ export default function App() {
             </div>
           </section>
 
-          {/* ── Workspace (group active) ─────────────────────── */}
-          {group ? (
+          {/* ── Admin Dashboard tab ──────────────────────────── */}
+          {isAdminDashboard && (
+            <AdminDashboard />
+          )}
+
+          {/* ── QR Attendance tab ────────────────────────────── */}
+          {isQrAttendance && (
             <>
               <div className="section-head">
                 <div>
                   <div className="eyebrow">YOUR ACTIVE SPACE</div>
-                  <h2>{isEmergencySos ? 'Emergency response' : 'Team hub'}</h2>
+                  <h2>QR Attendance</h2>
                 </div>
-                <div className="member-count">
-                  <span className="status-pulse" />{membersOnline} online
-                </div>
+                {group && (
+                  <div className="member-count">
+                    <span className="status-pulse" />{membersOnline} online
+                  </div>
+                )}
               </div>
-
-              {joinError && <div className="chat-error">{joinError}</div>}
-
-              {/* Messaging tab */}
-              {isMessaging && (
-                <div className="workspace-grid">
-                  <MessagePanel
-                    group={group}
-                    messages={messages}
-                    members={members}
-                    connection={connection}
-                    speakers={speakers}
-                    onVoiceSent={onVoiceSent}
-                    currentUser={userName.current}
-                  />
-                  <InvitePanel group={group} />
-                </div>
-              )}
-
-              {/* Walkie-Talkie tab */}
-              {isVoiceTab && (
-                <div className="workspace-grid">
-                  <VoicePanel
-                    group={group}
-                    messages={messages}
-                    members={members}
-                    connection={connection}
-                    speakers={speakers}
-                    onVoiceSent={onVoiceSent}
-                    currentUser={userName.current}
-                  />
-                </div>
-              )}
-
-              {/* Emergency SOS tab */}
-              {isEmergencySos && (
-                <EmergencySOSPanel group={group} onMembers={onMembers} />
-              )}
-
-              {/* QR Joining tab */}
-              {isQrJoining && (
-                <div className="workspace-grid">
-                  <InvitePanel group={group} />
-                </div>
-              )}
+              <QrAttendancePanel group={group} />
             </>
-          ) : (
-            <>
-              <div className="section-head">
-                <div>
-                  <div className="eyebrow">BUILT FOR THE FIELD</div>
-                  <h2>Everything your team needs</h2>
+          )}
+
+          {/* ── Group workspace panels ───────────────────────── */}
+          {!isAdminDashboard && !isQrAttendance && (
+            group ? (
+              <>
+                <div className="section-head">
+                  <div>
+                    <div className="eyebrow">YOUR ACTIVE SPACE</div>
+                    <h2>{isEmergencySos ? 'Emergency response' : isVoiceTab ? 'Walkie-Talkie' : 'Team hub'}</h2>
+                  </div>
+                  <div className="member-count">
+                    <span className="status-pulse" />{membersOnline} online
+                  </div>
                 </div>
-                <span className="section-note">A LOCAL-FIRST TOOLKIT</span>
-              </div>
-              <div className="feature-grid">
-                {features.map(feature => (
-                  <FeatureCard
-                    key={feature.id}
-                    feature={feature}
-                    onClick={() => selectFeature(feature.id)}
-                  />
-                ))}
-              </div>
-              {isEmergencySos && <EmergencySOSPanel group={null} />}
-            </>
+
+                {joinError && <div className="chat-error">{joinError}</div>}
+
+                {/* Messaging tab */}
+                {isMessaging && (
+                  <div className="workspace-grid">
+                    <MessagePanel
+                      group={group}
+                      messages={messages}
+                      members={members}
+                      connection={connection}
+                      speakers={speakers}
+                      onVoiceSent={onVoiceSent}
+                      currentUser={userName.current}
+                    />
+                    <InvitePanel group={group} />
+                  </div>
+                )}
+
+                {/* Walkie-Talkie tab */}
+                {isVoiceTab && (
+                  <div className="workspace-grid">
+                    <VoicePanel
+                      group={group}
+                      messages={messages}
+                      members={members}
+                      connection={connection}
+                      speakers={speakers}
+                      onVoiceSent={onVoiceSent}
+                      currentUser={userName.current}
+                    />
+                  </div>
+                )}
+
+                {/* Emergency SOS tab */}
+                {isEmergencySos && (
+                  <EmergencySOSPanel group={group} onMembers={onMembers} />
+                )}
+
+                {/* QR Joining tab */}
+                {isQrJoining && (
+                  <div className="workspace-grid">
+                    <InvitePanel group={group} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="section-head">
+                  <div>
+                    <div className="eyebrow">BUILT FOR THE FIELD</div>
+                    <h2>Everything your team needs</h2>
+                  </div>
+                  <span className="section-note">A LOCAL-FIRST TOOLKIT</span>
+                </div>
+                <div className="feature-grid">
+                  {features.map(feature => (
+                    <FeatureCard
+                      key={feature.id}
+                      feature={feature}
+                      onClick={() => selectFeature(feature.id)}
+                    />
+                  ))}
+                </div>
+                {isEmergencySos && <EmergencySOSPanel group={null} />}
+              </>
+            )
           )}
 
           {/* ── Coming-soon placeholder ──────────────────────── */}

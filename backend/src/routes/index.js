@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import adminRoutes from './admin.js';
 import groups from './groups.js';
 import voice from './voice.js';
 import gnani from './gnani.js';
@@ -10,6 +11,7 @@ router.get('/health', (_req, res) => res.json({ status: 'ok', service: 'groundli
 router.use('/groups', groups);
 router.use('/voice', voice);
 router.use('/gnani', gnani);
+router.use('/admin', adminRoutes);
 router.use('/emergency-sos', emergencySos);
 router.get('/groups/:code/messages', async (req, res, next) => {
   try {
