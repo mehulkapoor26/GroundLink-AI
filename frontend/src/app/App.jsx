@@ -452,7 +452,7 @@ export default function App() {
                   ))}
                 </div>
                 {isEmergencySos && <EmergencySOSPanel group={null} />}
-            {(chosenFeature?.id === "nav" || chosenFeature?.id === "navigation" || chosenFeature?.id === "campus-nav") && (
+            {(chosenFeature?.id === "offline-directions" || chosenFeature?.id === "nav" || chosenFeature?.id === "navigation" || chosenFeature?.id === "campus-nav") && (
               <CampusVectorNav />
             )}
               </>
