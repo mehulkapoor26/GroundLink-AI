@@ -1,13 +1,17 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 const file = resolve('backend/src/data/store.json');
-const initial = { groups: [], messages: [], sosAlerts: [] };
+const initial = { groups: [], messages: [], sosAlerts: [], attendanceSessions: [] };
 let queue = Promise.resolve();
 
 async function read() {
-  try { return { ...initial, ...JSON.parse(await readFile(file, 'utf8')) }; }
-  catch (error) { if (error.code !== 'ENOENT') throw error; return structuredClone(initial); }
+  try {
+    return { ...initial, ...JSON.parse(await readFile(file, 'utf8')) };
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return structuredClone(initial);
+  }
 }
 
 export async function updateStore(mutator) {

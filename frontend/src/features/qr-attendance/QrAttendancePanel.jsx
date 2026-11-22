@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:8082`;
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const STORAGE_KEY = "groundlink-qr-attendance-state";
 
 function loadSavedState() {
