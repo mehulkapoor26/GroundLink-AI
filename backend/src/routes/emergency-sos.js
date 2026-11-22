@@ -20,6 +20,9 @@ router.post('/:code', async (req, res, next) => {
     const result = await createSosAlert({ ...req.body, groupCode: code, reporter: req.body?.reporter || req.body?.createdBy });
     if (result.error) return res.status(result.error === 'Group not found' ? 404 : 400).json({ error: result.error });
     broadcast(req, code, 'sos:created', result.alert);
+    for (const alert of result.surgeAlerts || []) {
+      if (alert.id !== result.alert.id) broadcast(req, code, 'sos:updated', alert);
+    }
     res.status(201).json(result.alert);
   } catch (error) { next(error); }
 });
