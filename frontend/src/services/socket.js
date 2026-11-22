@@ -1,12 +1,12 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  `${window.location.protocol}//${window.location.hostname}:8000`;
-
-export const socket = io(SOCKET_URL, {
+// Keep Socket.IO same-origin so HTTPS clients connect to Vite, which proxies
+// both polling and WebSocket traffic to the plain-HTTP backend.
+export const socket = io(window.location.origin, {
   autoConnect: false,
-  transports: ["websocket", "polling"],
+  path: "/socket.io/",
+  // Start with polling and upgrade when the WebSocket proxy is available.
+  transports: ["polling", "websocket"],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 800,

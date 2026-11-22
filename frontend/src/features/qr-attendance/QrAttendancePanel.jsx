@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { getShareOrigin } from '../../utils/shareOrigin.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const STORAGE_KEY = "groundlink-qr-attendance-state";
@@ -79,7 +80,7 @@ export default function QrAttendancePanel({ group }) {
       setQrTargetUrl("");
       return;
     }
-    const targetUrl = `${window.location.origin}/?attendance=${encodeURIComponent(
+    const targetUrl = `${getShareOrigin()}/?attendance=${encodeURIComponent(
       session.sessionCode
     )}&groupId=${encodeURIComponent(groupId || "1")}`;
     setQrTargetUrl(targetUrl);

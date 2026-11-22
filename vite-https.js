@@ -10,6 +10,11 @@ const certificatePath = resolve(certificateDirectory, 'lan-cert.pem');
 const keyPath = resolve(certificateDirectory, 'lan-key.pem');
 const metadataPath = resolve(certificateDirectory, 'lan-cert.json');
 
+export function getLanIPv4() {
+  const entries = networkInterfaces().en0 || [];
+  return entries.find(entry => !entry.internal && (entry.family === 'IPv4' || entry.family === 4))?.address || '';
+}
+
 function lanAddresses() {
   const addresses = new Set();
   for (const entries of Object.values(networkInterfaces())) {
@@ -29,7 +34,9 @@ async function createCertificate(addresses) {
   const keys = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
   const certificate = forge.pki.createCertificate();
   certificate.publicKey = keys.publicKey;
-  certificate.serialNumber = forge.util.bytesToHex(forge.random.getBytesSync(16)).replace(/^0+/, '') || '01';
+  // X.509 serials are positive integers. Prefixing 01 prevents random values
+  // whose high bit is set from being interpreted as a negative serial.
+  certificate.serialNumber = `01${forge.util.bytesToHex(forge.random.getBytesSync(15))}`;
   certificate.validity.notBefore = new Date(Date.now() - 60_000);
   certificate.validity.notAfter = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
@@ -68,14 +75,14 @@ export async function getLanHttpsOptions() {
     ]);
     const metadata = JSON.parse(metadataText);
     const recentEnough = Date.now() - metadata.createdAt < 180 * 24 * 60 * 60 * 1000;
-    if (recentEnough && JSON.stringify(metadata.addresses) === JSON.stringify(addresses)) return { key, cert };
+    if (metadata.serialVersion === 2 && recentEnough && JSON.stringify(metadata.addresses) === JSON.stringify(addresses)) return { key, cert };
   } catch { /* Generate a certificate if no matching LAN certificate is cached. */ }
 
   const tls = await createCertificate(addresses);
   await Promise.all([
     writeFile(keyPath, tls.key, { mode: 0o600 }),
     writeFile(certificatePath, tls.cert),
-    writeFile(metadataPath, JSON.stringify({ createdAt: Date.now(), addresses }, null, 2)),
+    writeFile(metadataPath, JSON.stringify({ serialVersion: 2, createdAt: Date.now(), addresses }, null, 2)),
   ]);
   return tls;
 }
