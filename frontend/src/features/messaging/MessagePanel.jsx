@@ -1,82 +1,47 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+/**
+ * MessagePanel — live chat view (Messaging sidebar tab).
+ *
+ * Socket connection, group:join, and message/member/speaker state are
+ * managed by App.jsx (lifted up) and passed in as props.  This prevents
+ * the double group:join race that occurred when switching between the
+ * Messaging and Walkie-Talkie tabs.
+ */
+import { useEffect, useRef } from 'react';
 import { socket } from '../../services/socket.js';
-import { api } from '../../services/api.js';
-import { cacheMessage, getCachedMessages } from '../../services/localDb.js';
 import AudioBubble from '../voice-messages/AudioBubble.jsx';
 import TextToSpeech from '../voice-messages/TextToSpeech.jsx';
 import WalkieTalkie from '../voice-messages/WalkieTalkie.jsx';
 import SpeakingIndicator from '../voice-messages/SpeakingIndicator.jsx';
 import RadioMode from '../voice-messages/RadioMode.jsx';
+import { useState } from 'react';
 
 const initials = name => name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 
-export default function MessagePanel({ group, onMembers }) {
-  const [messages, setMessages] = useState([]);
-  const [members, setMembers] = useState([]);
+export default function MessagePanel({
+  group,
+  messages,
+  members,
+  connection,
+  speakers,
+  onVoiceSent,
+  currentUser,
+}) {
   const [text, setText] = useState('');
-  const [connection, setConnection] = useState(socket.connected);
   const [error, setError] = useState('');
-  const [speakers, setSpeakers] = useState([]);
   const [gnaniAvailable, setGnaniAvailable] = useState(false);
   const bottom = useRef(null);
-  const name = useRef(sessionStorage.getItem('groundlink-name') || `Guest ${Math.floor(10 + Math.random() * 89)}`);
 
-  // Check Gnani availability once
+  // Check Gnani (transcription / TTS) availability once per mount.
   useEffect(() => {
     fetch('/api/gnani/status').then(r => r.json())
       .then(d => setGnaniAvailable(!!d.configured))
       .catch(() => setGnaniAvailable(false));
   }, []);
 
+  // Auto-scroll to newest message.
   useEffect(() => {
-    let mounted = true;
-    async function join() {
-      try {
-        const cached = await getCachedMessages(group.code);
-        if (mounted) setMessages(cached);
-        const history = await api(`/groups/${group.code}/messages`);
-        if (mounted) { setMessages(history); history.forEach(cacheMessage); }
-      } catch { /* Cached messages remain available while disconnected. */ }
-      socket.connect();
-      socket.emit('group:join', { code: group.code, name: name.current }, result => {
-        if (!mounted) return;
-        if (result?.ok) { setError(''); sessionStorage.setItem('groundlink-name', result.member.name); }
-        else setError(result?.error || 'Unable to join group');
-      });
-    }
-    const onMessage = message => {
-      if (message.groupCode === group.code) {
-        setMessages(current => current.some(item => item.id === message.id) ? current : [...current, message]);
-        cacheMessage(message).catch(() => { });
-      }
-    };
-    const onMemberUpdate = list => { setMembers(list); onMembers(list.length); };
-    const onConnect = () => setConnection(true);
-    const onDisconnect = () => setConnection(false);
-    const onSpeaking = ({ socketId, name: speakerName, speaking }) => {
-      setSpeakers(prev => {
-        const without = prev.filter(s => s.socketId !== socketId);
-        if (speaking) return [...without, { socketId, name: speakerName, speaking: true }];
-        return without;
-      });
-    };
-    socket.on('message:new', onMessage);
-    socket.on('members:update', onMemberUpdate);
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('voice:speaking', onSpeaking);
-    join();
-    return () => {
-      mounted = false;
-      socket.off('message:new', onMessage);
-      socket.off('members:update', onMemberUpdate);
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('voice:speaking', onSpeaking);
-    };
-  }, [group.code, onMembers]);
-
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+    bottom.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   function send(event) {
     event.preventDefault();
@@ -85,13 +50,12 @@ export default function MessagePanel({ group, onMembers }) {
     setText('');
     socket.emit('message:send', {
       text: body,
-      clientId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+      clientId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
     }, result => {
       if (!result?.ok) { setText(body); setError(result?.error || 'Message failed'); }
+      else setError('');
     });
   }
-
-  const currentUser = name.current;
 
   return (
     <section className="chat-panel">
@@ -122,7 +86,11 @@ export default function MessagePanel({ group, onMembers }) {
               <div>
                 <div className="message-meta">
                   <strong>{own ? 'You' : message.sender}</strong>
-                  <time>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+                  <time>
+                    {new Date(message.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </time>
                 </div>
                 {message.type === 'voice' ? (
                   <AudioBubble message={message} gnaniAvailable={gnaniAvailable} />
@@ -153,8 +121,8 @@ export default function MessagePanel({ group, onMembers }) {
         <button disabled={!connection || !text.trim()} aria-label="Send message">↑</button>
       </form>
 
-      {/* Walkie-Talkie */}
-      <WalkieTalkie group={group} connection={connection} />
+      {/* Walkie-Talkie PTT bar */}
+      <WalkieTalkie group={group} connection={connection} onSend={onVoiceSent} />
 
       {/* Radio Mode */}
       <RadioMode messages={messages} currentUser={currentUser} />

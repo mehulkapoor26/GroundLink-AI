@@ -28,7 +28,9 @@ export function configureVoiceSockets(io) {
       if (!code || !message) return;
       // Ensure the message is tagged for the correct group
       if (message.groupCode !== code) return;
-      socket.to(room(code)).emit('message:new', message);
+      // Use io.to (not socket.to) so the sender's own tab also receives
+      // the message:new event and the voice note appears immediately.
+      io.to(room(code)).emit('message:new', message);
     });
 
     // ── Clean up speaking indicator on disconnect ─────────────────
