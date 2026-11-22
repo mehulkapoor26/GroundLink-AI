@@ -13,5 +13,10 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+attendance:
+  - createSession:
+  - checkIn:
+  - getAttendees:
+  - closeSession:
 greeting:
   - hello:

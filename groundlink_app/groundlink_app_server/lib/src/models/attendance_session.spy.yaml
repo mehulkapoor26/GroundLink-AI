@@ -1,0 +1,9 @@
+class: AttendanceSession
+table: attendance_session
+fields:
+  groupId: int
+  sessionCode: String
+  title: String
+  isActive: bool
+  createdAt: DateTime
+  closedAt: DateTime?

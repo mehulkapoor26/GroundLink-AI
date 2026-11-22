@@ -11,13 +11,19 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:groundlink_app_server/src/generated/attendance_record.dart'
+    as _ibzyav1e;
 import 'package:serverpod/protocol.dart' as _isp;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'attendance_record.dart' as _ixvdsmvt;
+import 'attendance_session.dart' as _i4rxvz28;
 import 'greetings/greeting.dart' as _izw8z7ou;
+export 'attendance_record.dart';
+export 'attendance_session.dart';
 export 'greetings/greeting.dart';
 
 class Protocol extends _is.DatabaseSerializationManager
@@ -33,15 +39,24 @@ class Protocol extends _is.DatabaseSerializationManager
       _is.ProtocolDeserialization.cached(
         this,
         types: const [
+          _is.getType<_ixvdsmvt.AttendanceRecord>,
+          _is.getType<_i4rxvz28.AttendanceSession>,
           _is.getType<_izw8z7ou.Greeting>,
+          _is.getType<_ixvdsmvt.AttendanceRecord?>,
+          _is.getType<_i4rxvz28.AttendanceSession?>,
           _is.getType<_izw8z7ou.Greeting?>,
+          _is.getType<List<_ibzyav1e.AttendanceRecord>>,
         ],
         modules: const [
           _iais.Protocol.new,
           _iacs.Protocol.new,
           _isp.Protocol.new,
         ],
-        classNames: const ['Greeting'],
+        classNames: const [
+          'AttendanceRecord',
+          'AttendanceSession',
+          'Greeting',
+        ],
       );
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
@@ -51,7 +66,116 @@ class Protocol extends _is.DatabaseSerializationManager
     ..._isp.Protocol.targetTableDefinitions,
   ];
 
-  static List<_isp.TableDefinition> get _ownTableDefinitions => [];
+  static List<_isp.TableDefinition> get _ownTableDefinitions => [
+    _isp.TableDefinition(
+      name: 'attendance_record',
+      dartName: 'AttendanceRecord',
+      schema: 'public',
+      module: 'groundlink_app',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sessionId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'memberName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'checkedInAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'attendance_session_member_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'sessionId',
+            ),
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'memberName',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'attendance_session',
+      dartName: 'AttendanceSession',
+      schema: 'public',
+      module: 'groundlink_app',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'groupId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sessionCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'title',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'isActive',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'closedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+  ];
 
   static String? getClassNameFromObjectJson(dynamic data) =>
       _is.ProtocolDeserialization.readClassName(data);
@@ -77,11 +201,31 @@ class Protocol extends _is.DatabaseSerializationManager
       }
     }
 
+    if (t == _ixvdsmvt.AttendanceRecord) {
+      return _ixvdsmvt.AttendanceRecord.fromJson(data) as T;
+    }
+    if (t == _i4rxvz28.AttendanceSession) {
+      return _i4rxvz28.AttendanceSession.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
+    if (t == _is.getType<_ixvdsmvt.AttendanceRecord?>()) {
+      return (data != null ? _ixvdsmvt.AttendanceRecord.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_i4rxvz28.AttendanceSession?>()) {
+      return (data != null ? _i4rxvz28.AttendanceSession.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
+    }
+    if (t == List<_ibzyav1e.AttendanceRecord>) {
+      return (data as List)
+              .map((e) => deserialize<_ibzyav1e.AttendanceRecord>(e))
+              .toList()
+          as T;
     }
     final modules = deserializationMetadata.modulesForDeserialization(
       t,
@@ -98,6 +242,8 @@ class Protocol extends _is.DatabaseSerializationManager
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _ixvdsmvt.AttendanceRecord => 'AttendanceRecord',
+      _i4rxvz28.AttendanceSession => 'AttendanceSession',
       _izw8z7ou.Greeting => 'Greeting',
       _ => null,
     };
@@ -116,6 +262,10 @@ class Protocol extends _is.DatabaseSerializationManager
     }
 
     switch (data) {
+      case _ixvdsmvt.AttendanceRecord():
+        return 'AttendanceRecord';
+      case _i4rxvz28.AttendanceSession():
+        return 'AttendanceSession';
       case _izw8z7ou.Greeting():
         return 'Greeting';
     }
@@ -143,6 +293,12 @@ class Protocol extends _is.DatabaseSerializationManager
     var dataClassName = data['className'];
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
+    }
+    if (dataClassName == 'AttendanceRecord') {
+      return deserialize<_ixvdsmvt.AttendanceRecord>(data['data']);
+    }
+    if (dataClassName == 'AttendanceSession') {
+      return deserialize<_i4rxvz28.AttendanceSession>(data['data']);
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
@@ -192,6 +348,12 @@ class Protocol extends _is.DatabaseSerializationManager
       if (table != null) {
         return table;
       }
+    }
+    switch (t) {
+      case _ixvdsmvt.AttendanceRecord:
+        return _ixvdsmvt.AttendanceRecord.t;
+      case _i4rxvz28.AttendanceSession:
+        return _i4rxvz28.AttendanceSession.t;
     }
     return null;
   }

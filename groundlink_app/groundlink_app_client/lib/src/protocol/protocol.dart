@@ -11,12 +11,18 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:groundlink_app_client/src/protocol/attendance_record.dart'
+    as _icyhxoxw;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import 'attendance_record.dart' as _ixvdsmvt;
+import 'attendance_session.dart' as _i4rxvz28;
 import 'greetings/greeting.dart' as _izw8z7ou;
+export 'attendance_record.dart';
+export 'attendance_session.dart';
 export 'greetings/greeting.dart';
 export 'client.dart';
 
@@ -33,14 +39,23 @@ class Protocol extends _isc.SerializationManager
       _isc.ProtocolDeserialization.cached(
         this,
         types: const [
+          _isc.getType<_ixvdsmvt.AttendanceRecord>,
+          _isc.getType<_i4rxvz28.AttendanceSession>,
           _isc.getType<_izw8z7ou.Greeting>,
+          _isc.getType<_ixvdsmvt.AttendanceRecord?>,
+          _isc.getType<_i4rxvz28.AttendanceSession?>,
           _isc.getType<_izw8z7ou.Greeting?>,
+          _isc.getType<List<_icyhxoxw.AttendanceRecord>>,
         ],
         modules: const [
           _iaic.Protocol.new,
           _iacc.Protocol.new,
         ],
-        classNames: const ['Greeting'],
+        classNames: const [
+          'AttendanceRecord',
+          'AttendanceSession',
+          'Greeting',
+        ],
       );
 
   static String? getClassNameFromObjectJson(dynamic data) =>
@@ -67,11 +82,31 @@ class Protocol extends _isc.SerializationManager
       }
     }
 
+    if (t == _ixvdsmvt.AttendanceRecord) {
+      return _ixvdsmvt.AttendanceRecord.fromJson(data) as T;
+    }
+    if (t == _i4rxvz28.AttendanceSession) {
+      return _i4rxvz28.AttendanceSession.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
+    if (t == _isc.getType<_ixvdsmvt.AttendanceRecord?>()) {
+      return (data != null ? _ixvdsmvt.AttendanceRecord.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_i4rxvz28.AttendanceSession?>()) {
+      return (data != null ? _i4rxvz28.AttendanceSession.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
+    }
+    if (t == List<_icyhxoxw.AttendanceRecord>) {
+      return (data as List)
+              .map((e) => deserialize<_icyhxoxw.AttendanceRecord>(e))
+              .toList()
+          as T;
     }
     final modules = deserializationMetadata.modulesForDeserialization(
       t,
@@ -88,6 +123,8 @@ class Protocol extends _isc.SerializationManager
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _ixvdsmvt.AttendanceRecord => 'AttendanceRecord',
+      _i4rxvz28.AttendanceSession => 'AttendanceSession',
       _izw8z7ou.Greeting => 'Greeting',
       _ => null,
     };
@@ -106,6 +143,10 @@ class Protocol extends _isc.SerializationManager
     }
 
     switch (data) {
+      case _ixvdsmvt.AttendanceRecord():
+        return 'AttendanceRecord';
+      case _i4rxvz28.AttendanceSession():
+        return 'AttendanceSession';
       case _izw8z7ou.Greeting():
         return 'Greeting';
     }
@@ -129,6 +170,12 @@ class Protocol extends _isc.SerializationManager
     var dataClassName = data['className'];
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
+    }
+    if (dataClassName == 'AttendanceRecord') {
+      return deserialize<_ixvdsmvt.AttendanceRecord>(data['data']);
+    }
+    if (dataClassName == 'AttendanceSession') {
+      return deserialize<_i4rxvz28.AttendanceSession>(data['data']);
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
