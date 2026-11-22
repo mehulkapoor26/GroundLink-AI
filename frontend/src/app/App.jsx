@@ -8,6 +8,7 @@ import EmergencySOSPanel from '../features/emergency-sos/EmergencySOSPanel.jsx';
 import { features } from '../utils/features.js';
 import AdminDashboard from '../features/admin-dashboard/AdminDashboard.jsx';
 import { api } from '../services/api.js';
+import QrAttendancePanel from '../features/qr-attendance/QrAttendancePanel.jsx';
 
 const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
@@ -16,6 +17,13 @@ export default function App() {
 
   const [active, setActive] = useState('messaging');
   const [group, setGroup] = useState(null);
+const [active, setActive] = useState(() => {
+  try {
+    return window.localStorage.getItem('groundlink-active-tab') || 'messaging';
+  } catch {
+    return 'messaging';
+  }
+});  const [group, setGroup] = useState(null);
   const [membersOnline, setMembersOnline] = useState(0);
   const [health, setHealth] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
@@ -53,7 +61,7 @@ export default function App() {
 
   const chosenFeature = useMemo(() => features.find(item => item.id === active) || features[0], [active]);
   function selectFeature(id) { setActive(id); setMobileNav(false); }
-
+try { window.localStorage.setItem('groundlink-active-tab', id); } catch {}
   return <div className="app-shell">
     <div className="mobile-top"><button className="hamburger" onClick={() => setMobileNav(value => !value)}>☰</button><span>GROUNDLINK <b>AI</b></span><span className={`mini-status ${health ? 'up' : ''}`}/></div>
     <Sidebar active={active} onSelect={selectFeature}/>
@@ -64,6 +72,11 @@ export default function App() {
         <section className="hero"><div><div className="eyebrow"><span className="eyebrow-line"/> OFFLINE-FIRST COORDINATION</div><h1>Stay connected.<br/><span>Stay in the loop.</span></h1><p>Real-time coordination for teams on the ground.<br className="desktop-break"/> No internet required. Just your local network.</p><GroupActions onJoined={setActiveGroup}/></div><div className="hero-graphic" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="orbit orbit-three"/><div className="signal-core"><span>G</span><i/></div><div className="orbit-label label-a">LOCAL<br/>WI-FI</div><div className="orbit-label label-b">TEAM<br/>LINKED</div></div></section>
         {active === 'admin-dashboard' && <AdminDashboard />}
         {group && active === 'emergency-sos' ? <>
+
+        {active === 'qr-attendance' ? <>
+          <div className="section-head"><div><div className="eyebrow">YOUR ACTIVE SPACE</div><h2>QR Attendance</h2></div>{group && <div className="member-count"><span className="status-pulse"/>{membersOnline} online</div>}</div>
+          <QrAttendancePanel group={group}/>
+        </> : group && active === 'emergency-sos' ? <>
           <div className="section-head"><div><div className="eyebrow">YOUR ACTIVE SPACE</div><h2>Emergency response</h2></div><div className="member-count"><span className="status-pulse"/>{membersOnline} online</div></div>
           <EmergencySOSPanel group={group} onMembers={onMembers}/>
         </> : group ? <>
@@ -76,6 +89,7 @@ export default function App() {
         </>}
 
         {active !== 'messaging' && active !== 'qr-joining' && active !== 'emergency-sos' && active !== 'admin-dashboard' && <section className="placeholder"><div className="placeholder-icon">{chosenFeature.icon}</div><div className="eyebrow">FEATURE MODULE / IN DEVELOPMENT</div><h2>{chosenFeature.label}</h2><p>{chosenFeature.description}. This module is reserved in the foundation and is not implemented yet.</p><span className="tag">COMING SOON</span></section>}
+        {active !== 'messaging' && active !== 'qr-joining' && active !== 'emergency-sos' && active !== 'qr-attendance' && <section className="placeholder"><div className="placeholder-icon">{chosenFeature.icon}</div><div className="eyebrow">FEATURE MODULE / IN DEVELOPMENT</div><h2>{chosenFeature.label}</h2><p>{chosenFeature.description}. This module is reserved in the foundation and is not implemented yet.</p><span className="tag">COMING SOON</span></section>}
         <footer><span>© 2026 GROUNDLINK AI</span><span>BUILT FOR CONNECTION, EVEN OFFLINE <b>↗</b></span></footer>
       </div>
     </main>

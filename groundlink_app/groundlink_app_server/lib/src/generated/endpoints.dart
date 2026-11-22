@@ -17,6 +17,7 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../endpoints/attendance_endpoint.dart' as _ieghzlx7;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
 
 class Endpoints extends _is.EndpointDispatch {
@@ -42,6 +43,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'attendance': _ieghzlx7.AttendanceEndpoint()
+        ..initialize(
+          server,
+          'attendance',
           null,
         ),
       'greeting': _il624ik7.GreetingEndpoint()
@@ -341,6 +348,104 @@ class Endpoints extends _is.EndpointDispatch {
                       .refreshAccessToken(
                         session,
                         refreshToken: params['refreshToken'],
+                      ),
+        ),
+      },
+    );
+    connectors['attendance'] = _is.EndpointConnector(
+      name: 'attendance',
+      endpoint: endpoints['attendance']!,
+      methodConnectors: {
+        'createSession': _is.MethodConnector(
+          name: 'createSession',
+          params: {
+            'groupId': _is.ParameterDescription(
+              name: 'groupId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'title': _is.ParameterDescription(
+              name: 'title',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['attendance'] as _ieghzlx7.AttendanceEndpoint)
+                      .createSession(
+                        session,
+                        params['groupId'],
+                        params['title'],
+                      ),
+        ),
+        'checkIn': _is.MethodConnector(
+          name: 'checkIn',
+          params: {
+            'sessionCode': _is.ParameterDescription(
+              name: 'sessionCode',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'memberName': _is.ParameterDescription(
+              name: 'memberName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['attendance'] as _ieghzlx7.AttendanceEndpoint)
+                      .checkIn(
+                        session,
+                        params['sessionCode'],
+                        params['memberName'],
+                      ),
+        ),
+        'getAttendees': _is.MethodConnector(
+          name: 'getAttendees',
+          params: {
+            'sessionId': _is.ParameterDescription(
+              name: 'sessionId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['attendance'] as _ieghzlx7.AttendanceEndpoint)
+                      .getAttendees(
+                        session,
+                        params['sessionId'],
+                      ),
+        ),
+        'closeSession': _is.MethodConnector(
+          name: 'closeSession',
+          params: {
+            'sessionId': _is.ParameterDescription(
+              name: 'sessionId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['attendance'] as _ieghzlx7.AttendanceEndpoint)
+                      .closeSession(
+                        session,
+                        params['sessionId'],
                       ),
         ),
       },

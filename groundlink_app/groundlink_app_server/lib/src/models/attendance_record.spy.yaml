@@ -1,0 +1,10 @@
+class: AttendanceRecord
+table: attendance_record
+fields:
+  sessionId: int
+  memberName: String
+  checkedInAt: DateTime
+indexes:
+  attendance_session_member_idx:
+    fields: sessionId, memberName
+    unique: true

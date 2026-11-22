@@ -32,6 +32,7 @@ dependencies:
   google_fonts: ^8.1.0
   groundlink_app_client:
     path: ../groundlink_app_client
+  qr_flutter: ^4.1.0
   serverpod_auth_idp_flutter: 4.1.2
   serverpod_flutter: 4.1.2
 

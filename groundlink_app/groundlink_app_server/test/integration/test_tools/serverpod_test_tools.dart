@@ -13,6 +13,10 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'dart:io' as _idi;
+import 'package:groundlink_app_server/src/generated/attendance_record.dart'
+    as _ibzyav1e;
+import 'package:groundlink_app_server/src/generated/attendance_session.dart'
+    as _izr69595;
 import 'package:groundlink_app_server/src/generated/greetings/greeting.dart'
     as _i4qlelde;
 import 'package:serverpod/serverpod.dart' as _is;
@@ -158,6 +162,8 @@ class TestEndpoints {
 
   late final _JwtRefreshEndpoint jwtRefresh;
 
+  late final _AttendanceEndpoint attendance;
+
   late final _GreetingEndpoint greeting;
 }
 
@@ -173,6 +179,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     jwtRefresh = _JwtRefreshEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    attendance = _AttendanceEndpoint(
       endpoints,
       serializationManager,
     );
@@ -625,6 +635,149 @@ class _JwtRefreshEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_iacs.AuthSuccess>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+}
+
+class _AttendanceEndpoint {
+  _AttendanceEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Future<_izr69595.AttendanceSession> createSession(
+    _ist.TestSessionBuilder sessionBuilder,
+    int groupId,
+    String title,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'attendance',
+            method: 'createSession',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'attendance',
+          methodName: 'createSession',
+          parameters: _ist.testObjectToJson({
+            'groupId': groupId,
+            'title': title,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_izr69595.AttendanceSession>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ibzyav1e.AttendanceRecord> checkIn(
+    _ist.TestSessionBuilder sessionBuilder,
+    String sessionCode,
+    String memberName,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'attendance',
+            method: 'checkIn',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'attendance',
+          methodName: 'checkIn',
+          parameters: _ist.testObjectToJson({
+            'sessionCode': sessionCode,
+            'memberName': memberName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ibzyav1e.AttendanceRecord>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_ibzyav1e.AttendanceRecord>> getAttendees(
+    _ist.TestSessionBuilder sessionBuilder,
+    int sessionId,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'attendance',
+            method: 'getAttendees',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'attendance',
+          methodName: 'getAttendees',
+          parameters: _ist.testObjectToJson({'sessionId': sessionId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_ibzyav1e.AttendanceRecord>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_izr69595.AttendanceSession> closeSession(
+    _ist.TestSessionBuilder sessionBuilder,
+    int sessionId,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'attendance',
+            method: 'closeSession',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'attendance',
+          methodName: 'closeSession',
+          parameters: _ist.testObjectToJson({'sessionId': sessionId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_izr69595.AttendanceSession>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
