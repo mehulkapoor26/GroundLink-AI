@@ -218,3 +218,59 @@ export function mlpRefineStepMeters(rawStepMeters, headingDeg, cnnScore = 0.5) {
     cnnScore,
   };
 }
+
+
+export function getCardinalDirection(dx, dy) {
+  // Map/screen coords: +X = East, -X = West, +Y = South, -Y = North
+  const angleFromNorthClockwise = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+  const dirs = [
+    "North",
+    "North-East",
+    "East",
+    "South-East",
+    "South",
+    "South-West",
+    "West",
+    "North-West",
+  ];
+  return dirs[Math.round(angleFromNorthClockwise / 45) % 8];
+}
+
+export function getTurnInstruction(currentHeadingDeg = 0, targetHeadingDeg = 0) {
+  let diff = ((targetHeadingDeg - currentHeadingDeg + 540) % 360) - 180;
+  if (Math.abs(diff) <= 22) return "Go Straight";
+  if (diff > 22 && diff <= 68) return "Turn Slight Right";
+  if (diff > 68 && diff < 135) return "Turn Right";
+  if (diff >= 135 || diff <= -135) return "Turn Around (Back)";
+  if (diff < -22 && diff >= -68) return "Turn Slight Left";
+  return "Turn Left";
+}
+
+export function buildTurnByTurnDirections(pathNodes = [], pixelsPerCm = 38, currentHeadingDeg = 0) {
+  const safeScale = pixelsPerCm > 0 ? pixelsPerCm : 38;
+  const steps = [];
+  let heading = currentHeadingDeg;
+
+  for (let i = 0; i < pathNodes.length - 1; i++) {
+    const a = pathNodes[i];
+    const b = pathNodes[i + 1];
+    const dxPx = b.x - a.x;
+    const dyPx = b.y - a.y;
+    const distMeters = Math.sqrt(dxPx * dxPx + dyPx * dyPx) / safeScale;
+    const cardinal = getCardinalDirection(dxPx, dyPx);
+    const targetHeading = ((Math.atan2(dxPx, -dyPx) * 180) / Math.PI + 360) % 360;
+    const turn = i === 0 ? `Face ${cardinal}` : getTurnInstruction(heading, targetHeading);
+
+    steps.push({
+      stepNumber: i + 1,
+      from: a.label || a.id,
+      to: b.label || b.id,
+      meters: Number(distMeters.toFixed(1)),
+      cardinal,
+      turn,
+    });
+    heading = targetHeading;
+  }
+
+  return steps;
+}

@@ -452,7 +452,6 @@ export default function App() {
                   ))}
                 </div>
                 {isEmergencySos && <EmergencySOSPanel group={null} />}
-            )}
               </>
             )
           )}

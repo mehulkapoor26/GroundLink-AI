@@ -56,12 +56,17 @@ export async function listSosAlerts(groupCode) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function createSosAlert({ groupCode, category, note, zone, reporter, text, transcript }) {
+export async function createSosAlert({ groupCode, category, note, zone, reporter, text, transcript, lat, lng }) {
   const code = normalizeGroupCode(groupCode);
   const normalizedCategory = String(category || '').trim();
   if (!SOS_CATEGORIES.includes(normalizedCategory)) return { error: 'Choose a valid SOS category' };
   const normalizedZone = String(zone || '').trim().slice(0, 80);
   const normalizedText = String(transcript || text || note || '').trim().slice(0, 300);
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  const hasGps = lat !== undefined && lat !== null && lat !== '' && lng !== undefined && lng !== null && lng !== '' &&
+    Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
   const classification = classifySosSeverity({ category: normalizedCategory, zone: normalizedZone, text: normalizedText });
   const createdAt = new Date().toISOString();
 
@@ -79,7 +84,8 @@ export async function createSosAlert({ groupCode, category, note, zone, reporter
     status: 'active',
     isCrowdSurge: false,
     surgeCount: 1,
-    acknowledgements: []
+    acknowledgements: [],
+    ...(hasGps ? { lat: latitude, lng: longitude } : {})
   };
 
   const result = await updateStore(store => {

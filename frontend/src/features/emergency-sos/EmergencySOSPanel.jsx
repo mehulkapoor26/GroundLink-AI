@@ -51,6 +51,28 @@ function newLocalId(prefix) {
   return `${prefix}-${randomId}`;
 }
 
+function getCurrentGpsPosition() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation?.getCurrentPosition) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      position => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 5_000 }
+    );
+  });
+}
+
+function publishLocalSos(alert) {
+  try { window.dispatchEvent(new CustomEvent('groundlink:sos-alert', { detail: alert })); } catch { /* Window event is optional. */ }
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      const channel = new BroadcastChannel('groundlink_nav_channel');
+      channel.postMessage({ type: 'groundlink:sos-alert', payload: alert });
+      channel.close();
+    } catch { /* BroadcastChannel is optional. */ }
+  }
+}
+
 function speechRecognitionConstructor() {
   if (typeof window === 'undefined') return null;
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -1073,26 +1095,31 @@ export default function EmergencySOSPanel({ group, onMembers }) {
     }
   }
 
-  function sendSos(payload = { category, note, zone }) {
+  async function sendSos(payload = { category, note, zone }) {
     try {
       const createdAt = new Date().toISOString();
+      const gps = await getCurrentGpsPosition();
+      const sosPayload = { ...payload, ...(gps || {}) };
       const localAlert = {
         id: newLocalId('local-sos'),
         groupCode: group.code,
-        category: payload.category,
-        note: payload.note || '',
-        text: payload.note || '',
-        zone: payload.zone || '',
+        category: sosPayload.category,
+        note: sosPayload.note || '',
+        text: sosPayload.note || '',
+        zone: sosPayload.zone || '',
         createdBy: name.current,
         status: 'active',
         severity: 'P2 High',
         score: 5,
+        ...(gps || {}),
         createdAt,
         updatedAt: createdAt,
         localSyncPending: true
       };
       setError('');
-      queueSosAction('sos:create', payload, { localAlert });
+      queueSosAction('sos:create', sosPayload, { localAlert });
+      saveGroupAlerts(group.code, mergeAlerts(readGroupAlerts(group.code), [localAlert]));
+      publishLocalSos(localAlert);
       setNote('');
       setZone('');
       setConfirming(false);
