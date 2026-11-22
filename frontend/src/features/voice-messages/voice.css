@@ -1,0 +1,108 @@
+/* ── Walkie-Talkie & Voice Bubble styles ─────────────────────────── */
+
+/* ── PTT button container ───────────────────────────────────────── */
+.walkie-bar { display: flex; align-items: center; gap: 9px; padding: 7px 13px; border-top: 1px solid var(--line); }
+.ptt-wrap { position: relative; display: flex; align-items: center; gap: 10px; flex: 1; }
+
+/* ── Microphone button ──────────────────────────────────────────── */
+.ptt-btn {
+  height: 42px; width: 42px; border: none; border-radius: 50%;
+  background: var(--green); color: #11170c; font-size: 20px;
+  cursor: pointer; display: grid; place-items: center;
+  transition: transform .12s, box-shadow .15s;
+  flex: 0 0 auto; position: relative; user-select: none;
+  -webkit-user-select: none; touch-action: none;
+}
+.ptt-btn:hover { transform: scale(1.06); }
+.ptt-btn:active, .ptt-btn.is-recording {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 6px rgba(187,255,74,.18), 0 0 32px rgba(187,255,74,.25);
+}
+.ptt-btn.is-recording { background: #ff6b6b; animation: ptt-pulse 1s ease-in-out infinite; }
+.ptt-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+.ptt-btn.is-uploading { background: var(--muted); animation: none; cursor: wait; }
+
+@keyframes ptt-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(255,107,107,.2), 0 0 20px rgba(255,107,107,.15); }
+  50%  { box-shadow: 0 0 0 10px rgba(255,107,107,.12), 0 0 40px rgba(255,107,107,.2); }
+}
+
+/* ── Recording state info ───────────────────────────────────────── */
+.ptt-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ptt-status { font-size: 9px; color: var(--muted); letter-spacing: .4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptt-status.is-recording { color: #ff6b6b; font-weight: 700; }
+.ptt-timer { font-size: 18px; font-weight: 700; letter-spacing: .5px; color: var(--white); font-variant-numeric: tabular-nums; }
+.ptt-countdown { font-size: 8px; color: #ff9b8a; margin-top: 1px; }
+
+/* ── Cancel button ──────────────────────────────────────────────── */
+.ptt-cancel { margin-left: auto; height: 28px; padding: 0 10px; font-size: 9px; font-weight: 700;
+  border: 1px solid #553333; border-radius: 4px; background: #221515; color: #ff9b8a; cursor: pointer; }
+.ptt-cancel:hover { background: #331a1a; border-color: #884444; }
+
+/* ── Mic permission error ───────────────────────────────────────── */
+.ptt-error { font-size: 9px; color: #e6a28a; padding: 4px 13px 2px; }
+
+/* ── Speaking indicator ─────────────────────────────────────────── */
+.speaking-bar { display: flex; align-items: center; gap: 7px; padding: 4px 14px; font-size: 9px; color: var(--green); }
+.speaking-bar .pulse-dot { height: 6px; width: 6px; border-radius: 50%; background: var(--green); animation: speak-pulse .8s ease-in-out infinite; flex: 0 0 auto; }
+@keyframes speak-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* ── Voice message bubble ───────────────────────────────────────── */
+.voice-bubble { max-width: 340px; background: #151e16; border: 1px solid #263329; padding: 10px 12px; border-radius: 2px 10px 10px; }
+.message.own .voice-bubble { background: #1c2a17; border-color: #35492d; }
+
+.voice-player { display: flex; align-items: center; gap: 9px; }
+.voice-play-btn {
+  height: 30px; width: 30px; border: none; border-radius: 50%;
+  background: var(--green); color: #11170c; font-size: 13px;
+  cursor: pointer; display: grid; place-items: center;
+  flex: 0 0 auto; transition: transform .1s;
+}
+.voice-play-btn:hover { transform: scale(1.08); }
+.voice-play-btn:disabled { opacity: .4; cursor: not-allowed; }
+.voice-play-btn.is-loading { animation: ptt-pulse 1s ease-in-out infinite; }
+
+.voice-track { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.voice-progress { position: relative; height: 4px; background: #253026; border-radius: 2px; cursor: pointer; }
+.voice-progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width .1s linear; }
+.voice-duration { font-size: 8px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* ── Transcription ──────────────────────────────────────────────── */
+.voice-transcription { margin-top: 7px; padding-top: 7px; border-top: 1px solid #1e2b1f; }
+.voice-transcript-text { font-size: 10px; color: #b4c0b5; line-height: 1.5; font-style: italic; }
+.voice-transcript-label { font-size: 7px; color: var(--muted); letter-spacing: .8px; margin-bottom: 3px; font-weight: 700; }
+
+/* ── Transcribe / TTS action buttons ────────────────────────────── */
+.voice-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.voice-action-btn {
+  height: 24px; padding: 0 8px; font-size: 8px; font-weight: 700;
+  border: 1px solid #303a32; border-radius: 3px; background: #111813;
+  color: #b0bab1; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  letter-spacing: .3px;
+}
+.voice-action-btn:hover { border-color: #789b56; color: var(--green); }
+.voice-action-btn:disabled { opacity: .45; cursor: wait; }
+.voice-action-btn.active { border-color: var(--green); color: var(--green); }
+
+/* ── TTS player inline ──────────────────────────────────────────── */
+.tts-inline { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+.tts-play-btn {
+  height: 22px; width: 22px; border: none; border-radius: 50%;
+  background: #2a4c2a; color: var(--green); font-size: 10px;
+  cursor: pointer; display: grid; place-items: center; flex: 0 0 auto;
+}
+.tts-play-btn:hover { background: #3a6a3a; }
+.tts-label { font-size: 8px; color: var(--muted); }
+
+/* ── Language selector dropdown ─────────────────────────────────── */
+.lang-select {
+  height: 24px; padding: 0 6px; font-size: 8px; font-weight: 700;
+  border: 1px solid #303a32; border-radius: 3px; background: #111813;
+  color: #b0bab1; cursor: pointer; outline: none;
+}
+.lang-select:focus { border-color: #789b56; }
+
+/* ── Radio mode toggle ──────────────────────────────────────────── */
+.radio-toggle { display: flex; align-items: center; gap: 6px; padding: 0 13px 4px; }
+.radio-toggle label { font-size: 8px; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 5px; letter-spacing: .4px; }
+.radio-toggle input[type="checkbox"] { accent-color: var(--green); width: 12px; height: 12px; }

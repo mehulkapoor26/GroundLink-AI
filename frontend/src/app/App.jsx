@@ -61,10 +61,11 @@ export default function App() {
   const chosenFeature = useMemo(() => features.find(item => item.id === active) || features[0], [active]);
 
   function selectFeature(id) {
-    setActive(id);
+    const nextTab = id === 'voice-messages' ? 'messaging' : id;
+    setActive(nextTab);
     setMobileNav(false);
     try {
-      window.localStorage.setItem('groundlink-active-tab', id);
+      window.localStorage.setItem('groundlink-active-tab', nextTab);
     } catch { /* Storage may be disabled */ }
   }
 
@@ -94,7 +95,7 @@ export default function App() {
         </>}
 
         {active !== 'messaging' && active !== 'qr-joining' && active !== 'emergency-sos' && active !== 'admin-dashboard' && active !== 'qr-attendance' && <section className="placeholder"><div className="placeholder-icon">{chosenFeature.icon}</div><div className="eyebrow">FEATURE MODULE / IN DEVELOPMENT</div><h2>{chosenFeature.label}</h2><p>{chosenFeature.description}. This module is reserved in the foundation and is not implemented yet.</p><span className="tag">COMING SOON</span></section>}
-        <footer><span>©️ 2026 GROUNDLINK AI</span><span>BUILT FOR CONNECTION, EVEN OFFLINE <b>↗️</b></span></footer>
+        <footer><span>© 2026 GROUNDLINK AI</span><span>BUILT FOR CONNECTION, EVEN OFFLINE <b>↗</b></span></footer>
       </div>
     </main>
   </div>;
