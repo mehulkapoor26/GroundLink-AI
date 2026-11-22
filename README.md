@@ -8,8 +8,9 @@ GroundLink AI is an offline-first coordination foundation for devices connected 
 - Generate a QR code containing the same-origin group invite URL.
 - Send and receive real-time group messages over Socket.IO.
 - See current group members and connection status.
-- Persist groups and messages in local JSON on the host, with a browser IndexedDB message cache.
-- Navigate placeholder modules for attendance, voice notes, venue navigation, SOS, and administration.
+- Persist groups, messages, and SOS alerts in local JSON on the host, with a browser IndexedDB message cache.
+- Trigger and coordinate local group SOS alerts in real time.
+- Navigate placeholder modules for attendance, voice notes, venue navigation, and administration.
 
 The placeholder modules are not implemented features. JSON persistence is intended for a single host and early development; it is not a multi-host database or a backup system.
 

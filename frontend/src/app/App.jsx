@@ -7,6 +7,7 @@
  *
  * Both MessagePanel and VoicePanel receive messages/connection/speakers
  * as props and no longer manage their own socket subscription.
+ * Emergency SOS panel is integrated alongside them.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar.jsx';
@@ -15,6 +16,7 @@ import GroupActions from '../features/group-management/GroupActions.jsx';
 import MessagePanel from '../features/messaging/MessagePanel.jsx';
 import InvitePanel from '../features/qr-joining/InvitePanel.jsx';
 import VoicePanel from '../features/voice-messages/VoicePanel.jsx';
+import EmergencySOSPanel from '../features/emergency-sos/EmergencySOSPanel.jsx';
 import { features } from '../utils/features.js';
 import { api } from '../services/api.js';
 import { socket } from '../services/socket.js';
@@ -158,7 +160,7 @@ export default function App() {
         }
       });
     };
-    socket.on('connect', onReconnect); // second listener — fires after onConnect
+    socket.on('connect', onReconnect);
 
     join();
 
@@ -171,7 +173,7 @@ export default function App() {
       socket.off('disconnect',     onDisconnect);
       socket.off('voice:speaking', onSpeaking);
     };
-  }, [group]); // group object ref changes only when setActiveGroup is called
+  }, [group]);
 
   // ── Optimistic append for voice messages sent from this client ───
   const onVoiceSent = useCallback(message => {
@@ -197,7 +199,8 @@ export default function App() {
   const isMessaging    = active === 'messaging';
   const isVoiceTab     = active === 'voice-messages';
   const isQrJoining    = active === 'qr-joining';
-  const isKnownFeature = isMessaging || isVoiceTab || isQrJoining;
+  const isEmergencySos = active === 'emergency-sos';
+  const isKnownFeature = isMessaging || isVoiceTab || isQrJoining || isEmergencySos;
 
   return (
     <div className="app-shell">
@@ -263,7 +266,7 @@ export default function App() {
               <div className="section-head">
                 <div>
                   <div className="eyebrow">YOUR ACTIVE SPACE</div>
-                  <h2>Team hub</h2>
+                  <h2>{isEmergencySos ? 'Emergency response' : 'Team hub'}</h2>
                 </div>
                 <div className="member-count">
                   <span className="status-pulse" />{membersOnline} online
@@ -303,6 +306,11 @@ export default function App() {
                 </div>
               )}
 
+              {/* Emergency SOS tab */}
+              {isEmergencySos && (
+                <EmergencySOSPanel group={group} onMembers={onMembers} />
+              )}
+
               {/* QR Joining tab */}
               {isQrJoining && (
                 <div className="workspace-grid">
@@ -328,6 +336,7 @@ export default function App() {
                   />
                 ))}
               </div>
+              {isEmergencySos && <EmergencySOSPanel group={null} />}
             </>
           )}
 
