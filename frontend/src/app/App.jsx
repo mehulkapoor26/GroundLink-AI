@@ -22,7 +22,13 @@ import QrAttendancePanel from '../features/qr-attendance/QrAttendancePanel.jsx';
 import { features } from '../utils/features.js';
 import { api } from '../services/api.js';
 import { socket } from '../services/socket.js';
-import { cacheMessage, getCachedMessages } from '../services/localDb.js';
+import {
+  cacheGroup, cacheMessage, getCachedGroup, getCachedGroupByCode,
+  getCachedMessages, getVoiceNote, mergeMessages, updateVoiceNote,
+} from '../services/localDb.js';
+import {
+  broadcastPendingVoiceNotes, resetInterruptedVoiceNotes, syncPendingVoiceNotes,
+} from '../services/voiceNotes.js';
 
 const ACTIVE_GROUP_KEY = 'groundlink-active-group-id';
 
@@ -50,10 +56,12 @@ export default function App() {
     sessionStorage.getItem('groundlink-name') ||
     `Guest ${Math.floor(10 + Math.random() * 89)}`
   );
+  const joinedRef = useRef(false);
 
   // ── Persist / restore active group ───────────────────────────────
   const setActiveGroup = useCallback(nextGroup => {
     setGroup(nextGroup);
+    cacheGroup(nextGroup).catch(() => {});
     setMessages([]);   // clear stale messages when group changes
     setMembers([]);
     setSpeakers([]);
@@ -74,22 +82,18 @@ export default function App() {
     try { savedGroupId = window.localStorage.getItem(ACTIVE_GROUP_KEY); }
     catch { /* ignore */ }
 
-    const restore = initialCode
+    const restoreOnline = initialCode
       ? api(`/groups/${encodeURIComponent(initialCode)}/join`, { method: 'POST', body: JSON.stringify({}) })
       : savedGroupId
         ? api(`/groups/id/${encodeURIComponent(savedGroupId)}`)
         : Promise.resolve(null);
+    const restore = restoreOnline.catch(async () => initialCode
+      ? getCachedGroupByCode(initialCode)
+      : getCachedGroup(savedGroupId));
 
     restore.then(restoredGroup => {
       if (mounted && restoredGroup) setActiveGroup(restoredGroup);
-    }).catch(() => {
-      if (!initialCode && mounted && savedGroupId) {
-        try {
-          if (window.localStorage.getItem(ACTIVE_GROUP_KEY) === savedGroupId)
-            window.localStorage.removeItem(ACTIVE_GROUP_KEY);
-        } catch { /* ignore */ }
-      }
-    });
+    }).catch(() => {});
     return () => { mounted = false; };
   }, [initialCode, setActiveGroup]);
 
@@ -99,40 +103,80 @@ export default function App() {
   useEffect(() => {
     if (!group) return;
     let mounted = true;
+    joinedRef.current = false;
+
+    function onQueueChange(message) {
+      if (!mounted) return;
+      setMessages(current => mergeMessages(current, [message]));
+      cacheMessage(message).catch(() => {});
+    }
+
+    async function syncAndPublish() {
+      await syncPendingVoiceNotes(group.code, onQueueChange);
+      if (joinedRef.current) await broadcastPendingVoiceNotes(group.code, onQueueChange);
+    }
 
     async function join() {
       // Load cached messages immediately (offline-first).
       try {
         const cached = await getCachedMessages(group.code);
         if (mounted) setMessages(cached);
+        if (group.localOnly) {
+          if (socket.connected) socket.disconnect();
+          if (mounted) setConnection(false);
+          return;
+        }
         // Fetch authoritative history.
         const history = await api(`/groups/${group.code}/messages`);
         if (mounted) {
-          setMessages(history);
-          history.forEach(cacheMessage);
+          const hydratedHistory = history.map(message => message.type === 'voice'
+            ? { ...message, status: 'synced' }
+            : message);
+          setMessages(current => mergeMessages(current, hydratedHistory));
+          await Promise.all(hydratedHistory.map(async message => {
+            cacheMessage(message).catch(() => {});
+            const clientMessageId = message.clientMessageId || message.clientId;
+            if (message.type === 'voice' && clientMessageId) {
+              const localNote = await getVoiceNote(clientMessageId).catch(() => null);
+              if (localNote && localNote.status !== 'synced') {
+                await updateVoiceNote(clientMessageId, { ...message, status: 'synced', broadcastPending: true }).catch(() => {});
+              }
+            }
+          }));
         }
-      } catch { /* cached state remains usable */ }
+      } catch { /* Cached messages and voice blobs remain available offline. */ }
 
       socket.connect();
-      socket.emit('group:join', { code: group.code, name: userName.current }, result => {
-        if (!mounted) return;
-        if (result?.ok) {
-          setJoinError('');
-          // Persist the server-assigned name (may have been de-duped).
-          sessionStorage.setItem('groundlink-name', result.member.name);
-          userName.current = result.member.name;
-        } else {
-          setJoinError(result?.error || 'Unable to join group');
-        }
-      });
+      if (socket.connected) joinSocketGroup();
+    }
+
+    function joinSocketGroup() {
+      if (!socket.connected) return;
+      try {
+        socket.emit('group:join', { code: group.code, name: userName.current }, result => {
+          if (!mounted) return;
+          if (result?.ok) {
+            joinedRef.current = true;
+            setJoinError('');
+            sessionStorage.setItem('groundlink-name', result.member.name);
+            userName.current = result.member.name;
+            syncAndPublish();
+          } else {
+            setJoinError(result?.error || 'Unable to join group');
+          }
+        });
+      } catch { /* Socket access is optional; local voice notes remain usable. */ }
     }
 
     const onMessage = message => {
       if (message.groupCode !== group.code) return;
-      setMessages(current =>
-        current.some(m => m.id === message.id) ? current : [...current, message]
-      );
-      cacheMessage(message).catch(() => {});
+      const deliveredMessage = message.type === 'voice' ? { ...message, status: 'synced' } : message;
+      setMessages(current => mergeMessages(current, [deliveredMessage]));
+      const clientMessageId = message.clientMessageId || message.clientId;
+      if (clientMessageId) {
+        updateVoiceNote(clientMessageId, { ...deliveredMessage, status: 'synced', broadcastPending: false }).catch(() => {});
+      }
+      cacheMessage(deliveredMessage).catch(() => {});
     };
 
     const onMemberUpdate = list => {
@@ -141,8 +185,12 @@ export default function App() {
       setMembersOnline(list.length);
     };
 
-    const onConnect    = () => { if (mounted) setConnection(true); };
-    const onDisconnect = () => { if (mounted) setConnection(false); };
+    const onConnect    = () => { if (mounted) { setConnection(!group.localOnly); if (!group.localOnly) joinSocketGroup(); } };
+    const onDisconnect = () => { joinedRef.current = false; if (mounted) setConnection(false); };
+    const onOnline = () => { syncAndPublish(); };
+    const onOffline = () => { resetInterruptedVoiceNotes(group.code, onQueueChange); };
+    const onFocus = () => { if (document.visibilityState === 'visible') syncAndPublish(); };
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') syncAndPublish(); };
 
     const onSpeaking = ({ socketId, name: speakerName, speaking }) => {
       if (!mounted) return;
@@ -159,18 +207,11 @@ export default function App() {
     socket.on('connect',        onConnect);
     socket.on('disconnect',     onDisconnect);
     socket.on('voice:speaking', onSpeaking);
-
-    // Re-join automatically after a reconnect so server state is restored.
-    const onReconnect = () => {
-      if (!mounted || !group) return;
-      socket.emit('group:join', { code: group.code, name: userName.current }, result => {
-        if (result?.ok) {
-          sessionStorage.setItem('groundlink-name', result.member.name);
-          userName.current = result.member.name;
-        }
-      });
-    };
-    socket.on('connect', onReconnect);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    syncAndPublish();
 
     join();
 
@@ -179,19 +220,27 @@ export default function App() {
       socket.off('message:new',    onMessage);
       socket.off('members:update', onMemberUpdate);
       socket.off('connect',        onConnect);
-      socket.off('connect',        onReconnect);
       socket.off('disconnect',     onDisconnect);
       socket.off('voice:speaking', onSpeaking);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      joinedRef.current = false;
     };
   }, [group]);
 
   // ── Optimistic append for voice messages sent from this client ───
   const onVoiceSent = useCallback(message => {
     if (message?.groupCode === group?.code) {
-      setMessages(current =>
-        current.some(m => m.id === message.id) ? current : [...current, message]
-      );
+      setMessages(current => mergeMessages(current, [message]));
       cacheMessage(message).catch(() => {});
+      if (message.status === 'synced' && message.broadcastPending && joinedRef.current) {
+        broadcastPendingVoiceNotes(group.code, updated => {
+          setMessages(current => mergeMessages(current, [updated]));
+          cacheMessage(updated).catch(() => {});
+        });
+      }
     }
   }, [group]);
 

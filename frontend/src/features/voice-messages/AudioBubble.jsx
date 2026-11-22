@@ -8,7 +8,7 @@
  *  • Optional transcription display
  *  • Transcribe button (Gnani Prisma)
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './voice.css';
 
 // Global: only one audio element playing at a time.
@@ -33,8 +33,17 @@ export default function AudioBubble({ message, gnaniAvailable }) {
   const [transcribeError, setTranscribeError] = useState('');
   const [language, setLanguage] = useState('en-IN');
   const audioRef = useRef(null);
+  const statusLabel = message.status === 'synced'
+    ? 'Synced'
+    : message.status === 'syncing' && globalThis.navigator?.onLine !== false
+      ? 'Syncing…'
+      : 'Pending Sync';
 
-  const audioUrl = `/api/voice/${message.audioId}`;
+  const localAudioUrl = useMemo(
+    () => message.audioBlob ? URL.createObjectURL(message.audioBlob) : null,
+    [message.audioBlob, message.id]
+  );
+  const audioUrl = localAudioUrl || `/api/voice/${message.audioId}`;
 
   // Create audio element lazily
   const getAudio = useCallback(() => {
@@ -69,8 +78,9 @@ export default function AudioBubble({ message, gnaniAvailable }) {
         audioRef.current.src = '';
         if (activeAudio === audioRef.current) { activeAudio = null; activeSetPlaying = null; }
       }
+      if (localAudioUrl) URL.revokeObjectURL(localAudioUrl);
     };
-  }, []);
+  }, [localAudioUrl]);
 
   // ── Play / Pause ────────────────────────────────────────────────
   const togglePlay = useCallback(async () => {
@@ -163,6 +173,12 @@ export default function AudioBubble({ message, gnaniAvailable }) {
         </div>
       </div>
 
+      {message.status && (
+        <div className="voice-save-status" role="status">
+          {statusLabel}
+        </div>
+      )}
+
       {/* Transcription display */}
       {transcription && (
         <div className="voice-transcription">
@@ -181,7 +197,7 @@ export default function AudioBubble({ message, gnaniAvailable }) {
               <option value="pa-IN">Punjabi</option>
               <option value="indic-auto">Auto-detect</option>
             </select>
-            <button className="voice-action-btn" onClick={transcribe} disabled={transcribing || !gnaniAvailable}>
+            <button className="voice-action-btn" onClick={transcribe} disabled={transcribing || !gnaniAvailable || Boolean(message.status && message.status !== 'synced')}>
               {transcribing ? '⟳ Transcribing…' : '✎ Transcribe'}
             </button>
           </>

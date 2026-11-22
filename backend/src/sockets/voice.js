@@ -23,14 +23,15 @@ export function configureVoiceSockets(io) {
     // ── Broadcast a new voice message to the group ────────────────
     // Called by the frontend AFTER the HTTP upload succeeds, so we
     // just relay the metadata (no binary on the socket).
-    socket.on('voice:broadcast', (message) => {
+    socket.on('voice:broadcast', (message, acknowledge = () => {}) => {
       const code = socket.data.groupCode;
-      if (!code || !message) return;
+      if (!code || !message) return acknowledge({ ok: false, error: 'Join a group before broadcasting a voice message' });
       // Ensure the message is tagged for the correct group
-      if (message.groupCode !== code) return;
+      if (message.groupCode !== code) return acknowledge({ ok: false, error: 'Voice message group does not match' });
       // Use io.to (not socket.to) so the sender's own tab also receives
       // the message:new event and the voice note appears immediately.
       io.to(room(code)).emit('message:new', message);
+      acknowledge({ ok: true });
     });
 
     // ── Clean up speaking indicator on disconnect ─────────────────

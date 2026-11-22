@@ -52,6 +52,7 @@
 .message.own .voice-bubble { background: #1c2a17; border-color: #35492d; }
 
 .voice-player { display: flex; align-items: center; gap: 9px; }
+.voice-save-status { margin-top: 5px; color: #b7f337; font-size: 8px; font-weight: 700; letter-spacing: .3px; }
 .voice-play-btn {
   height: 30px; width: 30px; border: none; border-radius: 50%;
   background: var(--green); color: #11170c; font-size: 13px;

@@ -21,9 +21,30 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { socket } from '../../services/socket.js';
+import { saveVoiceNote } from '../../services/localDb.js';
+import { createVoiceNote, syncPendingVoiceNotes } from '../../services/voiceNotes.js';
 import './voice.css';
 
 const MAX_DURATION = 30; // seconds
+const MIME_CANDIDATES = [
+  'audio/webm;codecs=opus',
+  'audio/webm',
+  'audio/mp4',
+  'audio/ogg',
+];
+
+function createMediaRecorder(stream, Recorder) {
+  const candidates = MIME_CANDIDATES.filter(type => {
+    try { return !Recorder.isTypeSupported || Recorder.isTypeSupported(type); }
+    catch { return false; }
+  });
+  // Try each reported format in preference order, then let the browser choose.
+  for (const mimeType of [...candidates, null]) {
+    try { return new Recorder(stream, mimeType ? { mimeType } : {}); }
+    catch { /* Try the next browser-supported format. */ }
+  }
+  return null;
+}
 
 export default function WalkieTalkie({ group, connection, onSend }) {
   const [state, setState] = useState('idle'); // idle | acquiring | recording | uploading
@@ -69,34 +90,26 @@ export default function WalkieTalkie({ group, connection, onSend }) {
   const uploadAudio = useCallback(async (blob, duration) => {
     setStateSync('uploading');
     const userName = sessionStorage.getItem('groundlink-name') || 'Guest';
+    const note = createVoiceNote({ blob, duration, group, sender: userName });
     try {
-      const res = await fetch('/api/voice/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': blob.type || 'audio/webm',
-          'X-GroundLink-User': userName,
-          'X-GroundLink-Group': group.code,
-          'X-GroundLink-Duration': String(Math.round(duration * 10) / 10),
-        },
-        body: blob,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Upload failed (${res.status})`);
-      }
-      const message = await res.json();
-      // Optimistically append to sender's own UI immediately (before socket echo).
-      // MessagePanel deduplicates by id, so the echo from io.to() won't double-add.
-      onSend?.(message);
-      // Broadcast voice message metadata to the group via socket.
-      socket.emit('voice:broadcast', message);
-    } catch (e) {
-      setError(e.message || 'Failed to send voice message');
-    } finally {
+      await saveVoiceNote(note);
+      onSend?.(note);
+      setError('');
+      setStateSync('idle');
+      setElapsed(0);
+      syncPendingVoiceNotes(note.groupCode, onSend).catch(() => {});
+    } catch {
+      onSend?.(note);
+      setError('Saved for this session; browser storage is unavailable.');
       setStateSync('idle');
       setElapsed(0);
     }
   }, [group, onSend]);
+
+  const emitIfConnected = useCallback((event, payload) => {
+    if (!socket.connected) return;
+    try { socket.emit(event, payload); } catch { /* Live indicators are optional offline. */ }
+  }, []);
 
   // ── Start recording (JIT mic acquisition) ───────────────────────
   const startRecording = useCallback(async () => {
@@ -106,9 +119,17 @@ export default function WalkieTalkie({ group, connection, onSend }) {
     sentRef.current = false;
     abortAcquire.current = false;
 
-    // Check browser support before touching state.
+    // Check APIs at the moment of recording. Insecure LAN IP origins can
+    // hide getUserMedia in Chrome; explain the browser setting without
+    // blocking localhost or secure origins.
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError('Your browser does not support audio recording.');
+      const origin = window.location.origin;
+      setError(`Microphone access is unavailable for ${origin}. In Chrome, enable this exact origin at chrome://flags/#unsafely-treat-insecure-origin-as-secure and relaunch, or use HTTPS.`);
+      return;
+    }
+    const Recorder = window.MediaRecorder;
+    if (!Recorder) {
+      setError('This browser does not support MediaRecorder audio recording.');
       return;
     }
 
@@ -143,20 +164,9 @@ export default function WalkieTalkie({ group, connection, onSend }) {
       }
     }
 
-    // Pick codec — prefer opus/webm, fall back to whatever's available.
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-          ? 'audio/ogg;codecs=opus'
-          : '';
-
     chunks.current = [];
-    const options = mimeType ? { mimeType } : {};
-    try {
-      mediaRecorder.current = new MediaRecorder(stream.current, options);
-    } catch {
+    mediaRecorder.current = createMediaRecorder(stream.current, Recorder);
+    if (!mediaRecorder.current) {
       setError('Failed to initialise audio recorder.');
       releaseMic();
       setStateSync('idle');
@@ -190,7 +200,7 @@ export default function WalkieTalkie({ group, connection, onSend }) {
     setElapsed(0);
 
     // Emit live speaking indicator to the group.
-    socket.emit('voice:speaking', { speaking: true });
+    emitIfConnected('voice:speaking', { speaking: true });
 
     // Timer: update elapsed display + enforce 30-second hard stop.
     // Uses stateRef (not the closure value of state) to avoid stale-closure bugs.
@@ -201,19 +211,19 @@ export default function WalkieTalkie({ group, connection, onSend }) {
         // Hard stop: clear timer and trigger stop inline to avoid stale stopRecording ref.
         clearInterval(timerRef.current);
         timerRef.current = null;
-        socket.emit('voice:speaking', { speaking: false });
+        emitIfConnected('voice:speaking', { speaking: false });
         if (mediaRecorder.current?.state === 'recording') {
           mediaRecorder.current.stop(); // triggers onstop → upload
         }
         setStateSync('idle');
       }
     }, 200);
-  }, [releaseMic, uploadAudio]);
+  }, [releaseMic, uploadAudio, emitIfConnected]);
 
   // ── Stop recording ──────────────────────────────────────────────
   const stopRecording = useCallback(() => {
     if (stateRef.current !== 'recording' || !mediaRecorder.current) return;
-    socket.emit('voice:speaking', { speaking: false });
+    emitIfConnected('voice:speaking', { speaking: false });
     if (mediaRecorder.current.state === 'recording') {
       mediaRecorder.current.stop(); // triggers onstop → upload
     }
@@ -221,21 +231,21 @@ export default function WalkieTalkie({ group, connection, onSend }) {
     // Note: stateRef / setState('idle') happens after onstop fires via uploadAudio's finally.
     // Set to idle here so the button unlocks visually without waiting for HTTP.
     setStateSync('idle');
-  }, []);
+  }, [emitIfConnected]);
 
   // ── Cancel recording ────────────────────────────────────────────
   const cancelRecording = useCallback(() => {
     // JIT abort: if still waiting for getUserMedia, signal abort.
     abortAcquire.current = true;
     isCancelled.current = true;
-    socket.emit('voice:speaking', { speaking: false });
+    emitIfConnected('voice:speaking', { speaking: false });
     if (mediaRecorder.current?.state === 'recording') mediaRecorder.current.stop();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     // JIT: release mic tracks immediately — don't wait for onstop.
     releaseMic();
     setStateSync('idle');
     setElapsed(0);
-  }, [releaseMic]);
+  }, [releaseMic, emitIfConnected]);
 
   // ── Pointer / touch handlers ────────────────────────────────────
   const onPointerDown = useCallback(e => {
@@ -266,7 +276,7 @@ export default function WalkieTalkie({ group, connection, onSend }) {
   const isAcquiring = state === 'acquiring';
   const isRecording = state === 'recording';
   const isUploading = state === 'uploading';
-  const disabled = !connection || isUploading;
+  const disabled = isUploading;
 
   return (
     <>
@@ -294,10 +304,10 @@ export default function WalkieTalkie({ group, connection, onSend }) {
                 {remaining <= 10 && <div className="ptt-countdown">{Math.ceil(remaining)}s remaining</div>}
               </>
             ) : isUploading ? (
-              <div className="ptt-status">Sending voice message…</div>
+              <div className="ptt-status">Saving voice note…</div>
             ) : (
               <div className="ptt-status">
-                {connection ? 'Hold to talk' : 'Waiting for connection…'}
+                {connection ? 'Hold to talk' : 'Hold to record offline'}
               </div>
             )}
           </div>
