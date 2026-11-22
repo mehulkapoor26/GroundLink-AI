@@ -6,5 +6,5 @@ export const features = [
   { id: 'offline-directions', label: 'Venue Navigation', icon: '⌖', description: 'Navigate saved venue maps', state: 'planned' },
   { id: 'emergency-sos', label: 'Emergency SOS', icon: '!', description: 'Coordinate urgent response', state: 'active' },
   { id: 'group-management', label: 'Group Management', icon: '◎', description: 'Manage your local teams', state: 'active' },
-  { id: 'admin-dashboard', label: 'Admin Dashboard', icon: '▤', description: 'Operations and oversight', state: 'planned' }
+  { id: 'admin-dashboard', label: 'Admin Dashboard', icon: '▤', description: 'Operations and oversight', state: 'active' }
 ];
