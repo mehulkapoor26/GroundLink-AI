@@ -93,7 +93,7 @@ export default function MessagePanel({
                   </time>
                 </div>
                 {message.type === 'voice' ? (
-                  <AudioBubble message={message} gnaniAvailable={gnaniAvailable} />
+                  <AudioBubble message={message} />
                 ) : (
                   <>
                     <div className="bubble">{message.text}</div>

@@ -6,7 +6,7 @@
  * same pattern as MessagePanel so switching tabs is instant and
  * race-condition-free.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import WalkieTalkie from './WalkieTalkie.jsx';
 import SpeakingIndicator from './SpeakingIndicator.jsx';
 import RadioMode from './RadioMode.jsx';
@@ -24,15 +24,7 @@ export default function VoicePanel({
   onVoiceSent,
   currentUser,
 }) {
-  const [gnaniAvailable, setGnaniAvailable] = useState(false);
   const bottom = useRef(null);
-
-  // Check Gnani (transcription) availability once per mount.
-  useEffect(() => {
-    fetch('/api/gnani/status').then(r => r.json())
-      .then(d => setGnaniAvailable(!!d.configured))
-      .catch(() => setGnaniAvailable(false));
-  }, []);
 
   // Only voice messages are shown in this tab.
   const voiceMessages = messages.filter(m => m.type === 'voice');
@@ -92,7 +84,7 @@ export default function VoicePanel({
                       })}
                     </time>
                   </div>
-                  <AudioBubble message={message} gnaniAvailable={gnaniAvailable} />
+                  <AudioBubble message={message} />
                 </div>
               </div>
             );
