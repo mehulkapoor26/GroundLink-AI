@@ -45,6 +45,7 @@ export default function App() {
   const [health, setHealth]           = useState(false);
   const [mobileNav, setMobileNav]     = useState(false);
   const [joinError, setJoinError]     = useState('');
+  const onMembers = useCallback(count => setMembersOnline(count), []);
   const userName = useRef(
     sessionStorage.getItem('groundlink-name') ||
     `Guest ${Math.floor(10 + Math.random() * 89)}`
